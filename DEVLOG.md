@@ -26,3 +26,5 @@ Correção dos dados sintéticos (v2). Ao testar o app com os dados de exemplo, 
 
 Bloco 2 concluído: app com upload e validação de CSV, ainda sem LLM. extrato.py valida as colunas obrigatórias (id, data, descricao, valor), o formato da data (AAAA-MM-DD), se o valor é numérico e se a descrição está vazia, com mensagens de erro em português. app.py tem upload de CSV, o botão 'Usar dados de exemplo' e um resumo (número de transações, período, entradas, saídas e tabela). Testes feitos: dados de exemplo (307 transações, período 01/08 a 31/10/2026), upload do transacoes.csv e upload do exemplo_invalido.csv (erro de coluna faltando: 'valor'). Limitações: a validação confere só o formato, não confere ids duplicados nem se os valores fazem sentido; o total de saídas ainda inclui o pagamento da fatura do cartão e as aplicações em RDB, que a análise do bloco 4 vai tratar à parte. Próximo: bloco 3, categorização por LLM em lotes com saída em JSON.
 
+Corrigido o resumo do app: o período aparecia cortado ('31/10/...'), pois o st.metric trunca textos longos. Agora são duas caixas (primeira e última data).
+

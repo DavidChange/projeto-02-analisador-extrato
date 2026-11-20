@@ -42,12 +42,13 @@ if erros:
 entradas = df.loc[df["valor"] > 0, "valor"].sum()
 saidas = df.loc[df["valor"] < 0, "valor"].sum()
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 col1.metric("Transações", len(df))
-col2.metric("Período", f"{df['data'].min():%d/%m/%Y} a {df['data'].max():%d/%m/%Y}")
+col2.metric("Primeira data", f"{df['data'].min():%d/%m/%Y}")
+col3.metric("Última data", f"{df['data'].max():%d/%m/%Y}")
 
-col3, col4 = st.columns(2)
-col3.metric("Total de entradas", formatar_reais(entradas))
-col4.metric("Total de saídas", formatar_reais(abs(saidas)))
+col4, col5 = st.columns(2)
+col4.metric("Total de entradas", formatar_reais(entradas))
+col5.metric("Total de saídas", formatar_reais(abs(saidas)))
 
 st.dataframe(df, width="stretch")
