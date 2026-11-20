@@ -18,3 +18,7 @@ Dados sintéticos criados: 307 transações fictícias (ago–out/2026) em dados
 
 O macOS cria arquivos `.DS_Store` sozinho em cada pasta; eles não têm valor para o projeto, então `.DS_Store` foi adicionado ao `.gitignore`.
 
+## 20/11/2026 — Correção dos dados sintéticos (v2)
+
+Correção dos dados sintéticos (v2). Ao testar o app com os dados de exemplo, os totais mostraram uma inconsistência: entradas de R$ 17.001,54 contra saídas de R$ 37.786,58 em 3 meses, ou seja, o usuário fictício gastava 2,2 vezes o que ganhava. Isso tornaria irreal qualquer recomendação do bloco 5. A primeira versão foi gerada sem conferir a proporção entre renda e gastos. Correção: salário de R$ 7.500 e gastos variáveis escalados (FATOR_VARIAVEL = 0.45) em dados/gerar_dados.py. Resultado: 307 transações, entradas R$ 26.901,54, saídas R$ 24.579,57 (cerca de 91%). As saídas incluem a fatura do cartão (cerca de R$ 3,9 mil) e as aplicações em RDB (R$ 900), que não são gasto de consumo; a análise do bloco 4 deve tratá-las à parte. Os arquivos foram substituídos mantendo os nomes; a versão anterior continua no histórico do Git. Lição: validar a plausibilidade dos dados sintéticos (renda x gastos) antes de usá-los.
+

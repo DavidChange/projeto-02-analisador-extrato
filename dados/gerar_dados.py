@@ -17,6 +17,11 @@ from pathlib import Path
 
 SEED = 42
 rng = random.Random(SEED)
+
+# Ajuste (v2): na v1 as saídas eram ~2,2x as entradas (irreal). Agora a renda é maior
+# e os gastos variáveis são escalados para que as saídas fiquem perto de 85% das entradas.
+SALARIO = 7500.00
+FATOR_VARIAVEL = 0.45
 MESES = [(2026, 8), (2026, 9), (2026, 10)]
 
 CATEGORIAS = [
@@ -47,7 +52,7 @@ def rdia(ano, mes):
 
 # ---------- 1) Itens fixos, todo mês ----------
 for ano, mes in MESES:
-    add(dia(ano, mes, 5), "CREDITO SALARIO EMPRESA ALFA LTDA", 4200.00, "Renda")
+    add(dia(ano, mes, 5), "CREDITO SALARIO EMPRESA ALFA LTDA", SALARIO, "Renda")
     add(dia(ano, mes, 6), "APLICACAO RDB", -300.00, "Investimentos")
     add(dia(ano, mes, 7), "BOLETO MENSALIDADE FACULDADE", -399.00, "Educação")
     add(dia(ano, mes, 8), "DEBITO AUTOMATICO CLARO MOVEL", -49.90, "Moradia e contas", 1,
@@ -65,7 +70,7 @@ for ano, mes in MESES:
     add(dia(ano, mes, 17), "GOOGLE *GOOGLE ONE", -9.99, "Lazer e assinaturas")
     add(dia(ano, mes, 18), "OPENAI *CHATGPT SUBSCR", -110.00, "Lazer e assinaturas")
     add(dia(ano, mes, 18), "IOF COMPRA INTERNACIONAL", -3.85, "Taxas e impostos")
-    add(dia(ano, mes, 20), "PAGAMENTO FATURA CARTAO", -val(1100, 1900), "Transferências", 1,
+    add(dia(ano, mes, 20), "PAGAMENTO FATURA CARTAO", -val(900, 1500), "Transferências", 1,
         "movimentação interna: não é gasto novo; excluir dos gráficos de gasto")
     add(dia(ano, mes, 28), "TARIFA PACOTE SERVICOS", -29.90, "Taxas e impostos")
 
@@ -110,7 +115,7 @@ for ano, mes in MESES:
         for _ in range(qtd):
             nome, lo, hi = rng.choice(lojas)
             desc = nome if cat == "Outros" else loja(nome)
-            add(rdia(ano, mes), desc, -val(lo, hi), cat)
+            add(rdia(ano, mes), desc, -val(lo * FATOR_VARIAVEL, hi * FATOR_VARIAVEL), cat)
 
 NOMES = ["MARIA SOUZA", "CARLOS ALBERTO PEREIRA", "JOAO PEDRO LIMA", "ANA CLARA ROCHA",
          "LUCAS MENDES", "FERNANDA COSTA", "RAFAEL TORRES", "BEATRIZ NUNES"]
@@ -160,7 +165,12 @@ AMBIGUOS = [
 for desc, lo, hi, cat, nota, sinal, reps in AMBIGUOS:
     for _ in range(reps):
         ano, mes = rng.choice(MESES)
-        valor = lo if lo == hi else val(lo, hi)
+        if lo == hi:
+            valor = lo  # preço fixo (assinaturas)
+        elif sinal < 0:
+            valor = val(lo * FATOR_VARIAVEL, hi * FATOR_VARIAVEL)
+        else:
+            valor = val(lo, hi)  # entradas (freela, reembolso, estorno) não são escaladas
         add(rdia(ano, mes), desc, sinal * valor, cat, 1, nota)
 
 # ---------- 4) Ordenar, numerar e gravar ----------
