@@ -92,8 +92,8 @@ def maiores_despesas(df, n=10):
 def fora_do_consumo(df):
     """DataFrame (descricao_grupo, total) do que ficou fora do consumo.
 
-    Sempre 4 linhas (fatura do cartão, PIX enviados, PIX recebidos, investimentos) e,
-    se houver, "outras transferências". Total = soma COM SINAL do grupo
+    Sempre 4 linhas (Fatura do cartão, PIX enviados, PIX recebidos, Investimentos) e,
+    se houver, "Outras transferências". Total = soma COM SINAL do grupo
     (saída negativa, entrada positiva).
     """
     transf = df[df["categoria"] == "Transferências"]
@@ -105,14 +105,14 @@ def fora_do_consumo(df):
     outras = ~(fatura | pix_env | pix_rec)
 
     grupos = [
-        ("fatura do cartão", transf.loc[fatura, "valor"].sum()),
+        ("Fatura do cartão", transf.loc[fatura, "valor"].sum()),
         ("PIX enviados", transf.loc[pix_env, "valor"].sum()),
         ("PIX recebidos", transf.loc[pix_rec, "valor"].sum()),
-        ("investimentos", df.loc[df["categoria"] == "Investimentos", "valor"].sum()),
+        ("Investimentos", df.loc[df["categoria"] == "Investimentos", "valor"].sum()),
     ]
     total_outras = transf.loc[outras, "valor"].sum()
     if total_outras != 0:
-        grupos.append(("outras transferências", total_outras))
+        grupos.append(("Outras transferências", total_outras))
 
     return pd.DataFrame(
         [{"descricao_grupo": nome, "total": _reais(total)} for nome, total in grupos]

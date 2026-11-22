@@ -1,8 +1,10 @@
 import hashlib
 import json
 
+import altair as alt
 import streamlit as st
 
+from analise import fora_do_consumo, gasto_por_categoria, juntar_categorias, resumo
 from categorizador import MODELO, VERSAO_PROMPT, categorizar_todos
 from extrato import carregar_e_validar
 
@@ -10,9 +12,10 @@ CAMINHO_EXEMPLO = "dados/transacoes.csv"
 
 
 def formatar_reais(valor):
-    """Ex.: 1234.5 -> 'R$ 1.234,50'."""
-    texto = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    return f"R$ {texto}"
+    """Ex.: 1234.5 -> 'R$ 1.234,50' e -1234.5 -> '-R$ 1.234,50'."""
+    sinal = "-" if valor < 0 else ""
+    texto = f"{abs(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{sinal}R$ {texto}"
 
 
 st.title("Analisador de extrato financeiro")
@@ -53,7 +56,11 @@ col3.metric("Última data", f"{df['data'].max():%d/%m/%Y}")
 
 col4, col5 = st.columns(2)
 col4.metric("Total de entradas", formatar_reais(entradas))
-col5.metric("Total de saídas", formatar_reais(abs(saidas)))
+col5.metric(
+    "Saídas brutas",
+    formatar_reais(abs(saidas)),
+    help="Inclui a fatura do cartão, PIX a pessoas e aplicações",
+)
 
 # Espaço reservado para a tabela (preenchido depois, para já mostrar a coluna "categoria")
 area_tabela = st.container()
@@ -119,3 +126,61 @@ if guardado is not None:
         .reset_index(name="transações")
     )
     st.dataframe(contagem, hide_index=True, width="stretch")
+
+# --- Análise dos gastos (só depois da categorização) ---
+if guardado is not None:
+    st.header("Análise dos gastos")
+    try:
+        df_cat = juntar_categorias(df, guardado["resultado"])
+    except ValueError as e:
+        st.error(str(e))
+    else:
+        r = resumo(df_cat)
+
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Renda", formatar_reais(r["renda"]))
+        m2.metric("Consumo", formatar_reais(r["consumo"]))
+        m3.metric(
+            "Sobra",
+            formatar_reais(r["saldo"]),
+            help="Renda menos consumo, antes de investimentos e transferências",
+        )
+
+        # Gráfico de barras horizontais: maior gasto no topo
+        st.subheader("Gasto por categoria")
+        gastos = gasto_por_categoria(df_cat)
+        gastos["gasto_formatado"] = gastos["gasto"].map(formatar_reais)  # para o tooltip
+        grafico = (
+            alt.Chart(gastos)
+            .mark_bar()
+            .encode(
+                # Eixo no padrão brasileiro: o Altair formata "1,500" e trocamos a vírgula por ponto
+                x=alt.X(
+                    "gasto:Q",
+                    title="Gasto (R$)",
+                    axis=alt.Axis(
+                        format=",.0f",
+                        labelExpr="replace(datum.label, regexp(',', 'g'), '.')",
+                    ),
+                ),
+                y=alt.Y("categoria:N", sort="-x", title=None),
+                tooltip=[
+                    alt.Tooltip("categoria:N", title="Categoria"),
+                    alt.Tooltip("gasto_formatado:N", title="Gasto"),
+                ],
+            )
+        )
+        st.altair_chart(grafico, width="stretch")
+
+        # Tabela do que ficou fora do consumo (valores com sinal)
+        st.subheader("Fora do consumo")
+        fora = fora_do_consumo(df_cat)
+        fora_tela = {
+            "Grupo": fora["descricao_grupo"],
+            "Total": fora["total"].map(formatar_reais),
+        }
+        st.dataframe(fora_tela, hide_index=True, width="stretch")
+        st.caption(
+            "Não entram no consumo: a fatura repetiria as compras do cartão já listadas; "
+            "PIX a pessoas e aplicações não dizem com o que o dinheiro foi gasto."
+        )
