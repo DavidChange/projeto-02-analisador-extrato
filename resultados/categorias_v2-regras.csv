@@ -1,0 +1,308 @@
+id,categoria,modelo,versao_prompt
+T001,Saúde,gemini-3.5-flash,v2-regras
+T002,Moradia e contas,gemini-3.5-flash,v2-regras
+T003,Transporte,gemini-3.5-flash,v2-regras
+T004,Transporte,gemini-3.5-flash,v2-regras
+T005,Mercado,gemini-3.5-flash,v2-regras
+T006,Alimentação fora,gemini-3.5-flash,v2-regras
+T007,Mercado,gemini-3.5-flash,v2-regras
+T008,Transporte,gemini-3.5-flash,v2-regras
+T009,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T010,Mercado,gemini-3.5-flash,v2-regras
+T011,Transporte,gemini-3.5-flash,v2-regras
+T012,Mercado,gemini-3.5-flash,v2-regras
+T013,Saúde,gemini-3.5-flash,v2-regras
+T014,Renda,gemini-3.5-flash,v2-regras
+T015,Alimentação fora,gemini-3.5-flash,v2-regras
+T016,Saúde,gemini-3.5-flash,v2-regras
+T017,Alimentação fora,gemini-3.5-flash,v2-regras
+T018,Transporte,gemini-3.5-flash,v2-regras
+T019,Investimentos,gemini-3.5-flash,v2-regras
+T020,Mercado,gemini-3.5-flash,v2-regras
+T021,Transporte,gemini-3.5-flash,v2-regras
+T022,Mercado,gemini-3.5-flash,v2-regras
+T023,Saúde,gemini-3.5-flash,v2-regras
+T024,Educação,gemini-3.5-flash,v2-regras
+T025,Mercado,gemini-3.5-flash,v2-regras
+T026,Compras e serviços,gemini-3.5-flash,v2-regras
+T027,Compras e serviços,gemini-3.5-flash,v2-regras
+T028,Transporte,gemini-3.5-flash,v2-regras
+T029,Alimentação fora,gemini-3.5-flash,v2-regras
+T030,Moradia e contas,gemini-3.5-flash,v2-regras
+T031,Mercado,gemini-3.5-flash,v2-regras
+T032,Compras e serviços,gemini-3.5-flash,v2-regras
+T033,Alimentação fora,gemini-3.5-flash,v2-regras
+T034,Transporte,gemini-3.5-flash,v2-regras
+T035,Mercado,gemini-3.5-flash,v2-regras
+T036,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T037,Moradia e contas,gemini-3.5-flash,v2-regras
+T038,Moradia e contas,gemini-3.5-flash,v2-regras
+T039,Alimentação fora,gemini-3.5-flash,v2-regras
+T040,Transporte,gemini-3.5-flash,v2-regras
+T041,Mercado,gemini-3.5-flash,v2-regras
+T042,Compras e serviços,gemini-3.5-flash,v2-regras
+T043,Alimentação fora,gemini-3.5-flash,v2-regras
+T044,Transporte,gemini-3.5-flash,v2-regras
+T045,Moradia e contas,gemini-3.5-flash,v2-regras
+T046,Mercado,gemini-3.5-flash,v2-regras
+T047,Alimentação fora,gemini-3.5-flash,v2-regras
+T048,Transporte,gemini-3.5-flash,v2-regras
+T049,Alimentação fora,gemini-3.5-flash,v2-regras
+T050,Transferências,gemini-3.5-flash,v2-regras
+T051,Alimentação fora,gemini-3.5-flash,v2-regras
+T052,Alimentação fora,gemini-3.5-flash,v2-regras
+T053,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T054,Alimentação fora,gemini-3.5-flash,v2-regras
+T055,Alimentação fora,gemini-3.5-flash,v2-regras
+T056,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T057,Compras e serviços,gemini-3.5-flash,v2-regras
+T058,Alimentação fora,gemini-3.5-flash,v2-regras
+T059,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T060,Alimentação fora,gemini-3.5-flash,v2-regras
+T061,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T062,Alimentação fora,gemini-3.5-flash,v2-regras
+T063,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T064,Compras e serviços,gemini-3.5-flash,v2-regras
+T065,Taxas e impostos,gemini-3.5-flash,v2-regras
+T066,Transferências,gemini-3.5-flash,v2-regras
+T067,Alimentação fora,gemini-3.5-flash,v2-regras
+T068,Moradia e contas,gemini-3.5-flash,v2-regras
+T069,Alimentação fora,gemini-3.5-flash,v2-regras
+T070,Transferências,gemini-3.5-flash,v2-regras
+T071,Compras e serviços,gemini-3.5-flash,v2-regras
+T072,Alimentação fora,gemini-3.5-flash,v2-regras
+T073,Transporte,gemini-3.5-flash,v2-regras
+T074,Mercado,gemini-3.5-flash,v2-regras
+T075,Alimentação fora,gemini-3.5-flash,v2-regras
+T076,Alimentação fora,gemini-3.5-flash,v2-regras
+T077,Compras e serviços,gemini-3.5-flash,v2-regras
+T078,Transferências,gemini-3.5-flash,v2-regras
+T079,Mercado,gemini-3.5-flash,v2-regras
+T080,Mercado,gemini-3.5-flash,v2-regras
+T081,Transferências,gemini-3.5-flash,v2-regras
+T082,Alimentação fora,gemini-3.5-flash,v2-regras
+T083,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T084,Compras e serviços,gemini-3.5-flash,v2-regras
+T085,Transporte,gemini-3.5-flash,v2-regras
+T086,Mercado,gemini-3.5-flash,v2-regras
+T087,Saúde,gemini-3.5-flash,v2-regras
+T088,Transferências,gemini-3.5-flash,v2-regras
+T089,Alimentação fora,gemini-3.5-flash,v2-regras
+T090,Outros,gemini-3.5-flash,v2-regras
+T091,Transferências,gemini-3.5-flash,v2-regras
+T092,Mercado,gemini-3.5-flash,v2-regras
+T093,Alimentação fora,gemini-3.5-flash,v2-regras
+T094,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T095,Taxas e impostos,gemini-3.5-flash,v2-regras
+T096,Compras e serviços,gemini-3.5-flash,v2-regras
+T097,Educação,gemini-3.5-flash,v2-regras
+T098,Transporte,gemini-3.5-flash,v2-regras
+T099,Compras e serviços,gemini-3.5-flash,v2-regras
+T100,Transporte,gemini-3.5-flash,v2-regras
+T101,Alimentação fora,gemini-3.5-flash,v2-regras
+T102,Transporte,gemini-3.5-flash,v2-regras
+T103,Compras e serviços,gemini-3.5-flash,v2-regras
+T104,Renda,gemini-3.5-flash,v2-regras
+T105,Alimentação fora,gemini-3.5-flash,v2-regras
+T106,Educação,gemini-3.5-flash,v2-regras
+T107,Compras e serviços,gemini-3.5-flash,v2-regras
+T108,Mercado,gemini-3.5-flash,v2-regras
+T109,Mercado,gemini-3.5-flash,v2-regras
+T110,Compras e serviços,gemini-3.5-flash,v2-regras
+T111,Renda,gemini-3.5-flash,v2-regras
+T112,Alimentação fora,gemini-3.5-flash,v2-regras
+T113,Transporte,gemini-3.5-flash,v2-regras
+T114,Mercado,gemini-3.5-flash,v2-regras
+T115,Mercado,gemini-3.5-flash,v2-regras
+T116,Investimentos,gemini-3.5-flash,v2-regras
+T117,Educação,gemini-3.5-flash,v2-regras
+T118,Transferências,gemini-3.5-flash,v2-regras
+T119,Alimentação fora,gemini-3.5-flash,v2-regras
+T120,Mercado,gemini-3.5-flash,v2-regras
+T121,Moradia e contas,gemini-3.5-flash,v2-regras
+T122,Transporte,gemini-3.5-flash,v2-regras
+T123,Mercado,gemini-3.5-flash,v2-regras
+T124,Alimentação fora,gemini-3.5-flash,v2-regras
+T125,Alimentação fora,gemini-3.5-flash,v2-regras
+T126,Alimentação fora,gemini-3.5-flash,v2-regras
+T127,Transporte,gemini-3.5-flash,v2-regras
+T128,Transferências,gemini-3.5-flash,v2-regras
+T129,Mercado,gemini-3.5-flash,v2-regras
+T130,Compras e serviços,gemini-3.5-flash,v2-regras
+T131,Alimentação fora,gemini-3.5-flash,v2-regras
+T132,Compras e serviços,gemini-3.5-flash,v2-regras
+T133,Renda,gemini-3.5-flash,v2-regras
+T134,Saúde,gemini-3.5-flash,v2-regras
+T135,Transporte,gemini-3.5-flash,v2-regras
+T136,Alimentação fora,gemini-3.5-flash,v2-regras
+T137,Transporte,gemini-3.5-flash,v2-regras
+T138,Transporte,gemini-3.5-flash,v2-regras
+T139,Saúde,gemini-3.5-flash,v2-regras
+T140,Mercado,gemini-3.5-flash,v2-regras
+T141,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T142,Moradia e contas,gemini-3.5-flash,v2-regras
+T143,Moradia e contas,gemini-3.5-flash,v2-regras
+T144,Alimentação fora,gemini-3.5-flash,v2-regras
+T145,Alimentação fora,gemini-3.5-flash,v2-regras
+T146,Mercado,gemini-3.5-flash,v2-regras
+T147,Transporte,gemini-3.5-flash,v2-regras
+T148,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T149,Alimentação fora,gemini-3.5-flash,v2-regras
+T150,Alimentação fora,gemini-3.5-flash,v2-regras
+T151,Moradia e contas,gemini-3.5-flash,v2-regras
+T152,Alimentação fora,gemini-3.5-flash,v2-regras
+T153,Transporte,gemini-3.5-flash,v2-regras
+T154,Mercado,gemini-3.5-flash,v2-regras
+T155,Transporte,gemini-3.5-flash,v2-regras
+T156,Mercado,gemini-3.5-flash,v2-regras
+T157,Mercado,gemini-3.5-flash,v2-regras
+T158,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T159,Alimentação fora,gemini-3.5-flash,v2-regras
+T160,Transferências,gemini-3.5-flash,v2-regras
+T161,Transporte,gemini-3.5-flash,v2-regras
+T162,Transporte,gemini-3.5-flash,v2-regras
+T163,Outros,gemini-3.5-flash,v2-regras
+T164,Moradia e contas,gemini-3.5-flash,v2-regras
+T165,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T166,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T167,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T168,Taxas e impostos,gemini-3.5-flash,v2-regras
+T169,Saúde,gemini-3.5-flash,v2-regras
+T170,Alimentação fora,gemini-3.5-flash,v2-regras
+T171,Transporte,gemini-3.5-flash,v2-regras
+T172,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T173,Transferências,gemini-3.5-flash,v2-regras
+T174,Alimentação fora,gemini-3.5-flash,v2-regras
+T175,Alimentação fora,gemini-3.5-flash,v2-regras
+T176,Alimentação fora,gemini-3.5-flash,v2-regras
+T177,Alimentação fora,gemini-3.5-flash,v2-regras
+T178,Alimentação fora,gemini-3.5-flash,v2-regras
+T179,Alimentação fora,gemini-3.5-flash,v2-regras
+T180,Alimentação fora,gemini-3.5-flash,v2-regras
+T181,Transporte,gemini-3.5-flash,v2-regras
+T182,Alimentação fora,gemini-3.5-flash,v2-regras
+T183,Saúde,gemini-3.5-flash,v2-regras
+T184,Compras e serviços,gemini-3.5-flash,v2-regras
+T185,Alimentação fora,gemini-3.5-flash,v2-regras
+T186,Alimentação fora,gemini-3.5-flash,v2-regras
+T187,Transferências,gemini-3.5-flash,v2-regras
+T188,Compras e serviços,gemini-3.5-flash,v2-regras
+T189,Mercado,gemini-3.5-flash,v2-regras
+T190,Compras e serviços,gemini-3.5-flash,v2-regras
+T191,Mercado,gemini-3.5-flash,v2-regras
+T192,Alimentação fora,gemini-3.5-flash,v2-regras
+T193,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T194,Alimentação fora,gemini-3.5-flash,v2-regras
+T195,Compras e serviços,gemini-3.5-flash,v2-regras
+T196,Compras e serviços,gemini-3.5-flash,v2-regras
+T197,Mercado,gemini-3.5-flash,v2-regras
+T198,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T199,Transporte,gemini-3.5-flash,v2-regras
+T200,Compras e serviços,gemini-3.5-flash,v2-regras
+T201,Taxas e impostos,gemini-3.5-flash,v2-regras
+T202,Transferências,gemini-3.5-flash,v2-regras
+T203,Mercado,gemini-3.5-flash,v2-regras
+T204,Transferências,gemini-3.5-flash,v2-regras
+T205,Transporte,gemini-3.5-flash,v2-regras
+T206,Saúde,gemini-3.5-flash,v2-regras
+T207,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T208,Transporte,gemini-3.5-flash,v2-regras
+T209,Investimentos,gemini-3.5-flash,v2-regras
+T210,Saúde,gemini-3.5-flash,v2-regras
+T211,Compras e serviços,gemini-3.5-flash,v2-regras
+T212,Alimentação fora,gemini-3.5-flash,v2-regras
+T213,Alimentação fora,gemini-3.5-flash,v2-regras
+T214,Compras e serviços,gemini-3.5-flash,v2-regras
+T215,Alimentação fora,gemini-3.5-flash,v2-regras
+T216,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T217,Compras e serviços,gemini-3.5-flash,v2-regras
+T218,Compras e serviços,gemini-3.5-flash,v2-regras
+T219,Transporte,gemini-3.5-flash,v2-regras
+T220,Renda,gemini-3.5-flash,v2-regras
+T221,Alimentação fora,gemini-3.5-flash,v2-regras
+T222,Alimentação fora,gemini-3.5-flash,v2-regras
+T223,Alimentação fora,gemini-3.5-flash,v2-regras
+T224,Transferências,gemini-3.5-flash,v2-regras
+T225,Investimentos,gemini-3.5-flash,v2-regras
+T226,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T227,Educação,gemini-3.5-flash,v2-regras
+T228,Outros,gemini-3.5-flash,v2-regras
+T229,Moradia e contas,gemini-3.5-flash,v2-regras
+T230,Alimentação fora,gemini-3.5-flash,v2-regras
+T231,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T232,Transporte,gemini-3.5-flash,v2-regras
+T233,Mercado,gemini-3.5-flash,v2-regras
+T234,Transporte,gemini-3.5-flash,v2-regras
+T235,Transporte,gemini-3.5-flash,v2-regras
+T236,Alimentação fora,gemini-3.5-flash,v2-regras
+T237,Saúde,gemini-3.5-flash,v2-regras
+T238,Transferências,gemini-3.5-flash,v2-regras
+T239,Alimentação fora,gemini-3.5-flash,v2-regras
+T240,Transporte,gemini-3.5-flash,v2-regras
+T241,Alimentação fora,gemini-3.5-flash,v2-regras
+T242,Transferências,gemini-3.5-flash,v2-regras
+T243,Moradia e contas,gemini-3.5-flash,v2-regras
+T244,Compras e serviços,gemini-3.5-flash,v2-regras
+T245,Mercado,gemini-3.5-flash,v2-regras
+T246,Moradia e contas,gemini-3.5-flash,v2-regras
+T247,Transporte,gemini-3.5-flash,v2-regras
+T248,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T249,Alimentação fora,gemini-3.5-flash,v2-regras
+T250,Mercado,gemini-3.5-flash,v2-regras
+T251,Alimentação fora,gemini-3.5-flash,v2-regras
+T252,Moradia e contas,gemini-3.5-flash,v2-regras
+T253,Mercado,gemini-3.5-flash,v2-regras
+T254,Mercado,gemini-3.5-flash,v2-regras
+T255,Mercado,gemini-3.5-flash,v2-regras
+T256,Compras e serviços,gemini-3.5-flash,v2-regras
+T257,Alimentação fora,gemini-3.5-flash,v2-regras
+T258,Alimentação fora,gemini-3.5-flash,v2-regras
+T259,Alimentação fora,gemini-3.5-flash,v2-regras
+T260,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T261,Transporte,gemini-3.5-flash,v2-regras
+T262,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T263,Transporte,gemini-3.5-flash,v2-regras
+T264,Alimentação fora,gemini-3.5-flash,v2-regras
+T265,Mercado,gemini-3.5-flash,v2-regras
+T266,Transporte,gemini-3.5-flash,v2-regras
+T267,Alimentação fora,gemini-3.5-flash,v2-regras
+T268,Transporte,gemini-3.5-flash,v2-regras
+T269,Mercado,gemini-3.5-flash,v2-regras
+T270,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T271,Mercado,gemini-3.5-flash,v2-regras
+T272,Mercado,gemini-3.5-flash,v2-regras
+T273,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T274,Transferências,gemini-3.5-flash,v2-regras
+T275,Taxas e impostos,gemini-3.5-flash,v2-regras
+T276,Transporte,gemini-3.5-flash,v2-regras
+T277,Alimentação fora,gemini-3.5-flash,v2-regras
+T278,Mercado,gemini-3.5-flash,v2-regras
+T279,Mercado,gemini-3.5-flash,v2-regras
+T280,Moradia e contas,gemini-3.5-flash,v2-regras
+T281,Transferências,gemini-3.5-flash,v2-regras
+T282,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T283,Alimentação fora,gemini-3.5-flash,v2-regras
+T284,Alimentação fora,gemini-3.5-flash,v2-regras
+T285,Transporte,gemini-3.5-flash,v2-regras
+T286,Compras e serviços,gemini-3.5-flash,v2-regras
+T287,Mercado,gemini-3.5-flash,v2-regras
+T288,Alimentação fora,gemini-3.5-flash,v2-regras
+T289,Compras e serviços,gemini-3.5-flash,v2-regras
+T290,Alimentação fora,gemini-3.5-flash,v2-regras
+T291,Educação,gemini-3.5-flash,v2-regras
+T292,Transferências,gemini-3.5-flash,v2-regras
+T293,Alimentação fora,gemini-3.5-flash,v2-regras
+T294,Alimentação fora,gemini-3.5-flash,v2-regras
+T295,Mercado,gemini-3.5-flash,v2-regras
+T296,Saúde,gemini-3.5-flash,v2-regras
+T297,Lazer e assinaturas,gemini-3.5-flash,v2-regras
+T298,Alimentação fora,gemini-3.5-flash,v2-regras
+T299,Alimentação fora,gemini-3.5-flash,v2-regras
+T300,Saúde,gemini-3.5-flash,v2-regras
+T301,Taxas e impostos,gemini-3.5-flash,v2-regras
+T302,Transporte,gemini-3.5-flash,v2-regras
+T303,Compras e serviços,gemini-3.5-flash,v2-regras
+T304,Transporte,gemini-3.5-flash,v2-regras
+T305,Transferências,gemini-3.5-flash,v2-regras
+T306,Mercado,gemini-3.5-flash,v2-regras
+T307,Mercado,gemini-3.5-flash,v2-regras
