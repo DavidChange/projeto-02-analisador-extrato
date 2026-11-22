@@ -44,3 +44,7 @@ Corrigido o resumo do app: o período aparecia cortado ('31/10/...'), pois o st.
 
 **Próximo:** bloco 4 (totais e gráficos com pandas, tratando à parte a fatura do cartão e as aplicações).
 
+## 22/11/2026 — Bloco 4, passo 1: cálculos com pandas
+
+Criado `analise.py`, só com cálculos em pandas (o LLM não calcula nada). Grupos: Renda; Consumo (as 10 categorias de gasto); Fora do consumo (Transferências e Investimentos). A fatura do cartão fica fora porque as compras no cartão já aparecem uma a uma no extrato, e contá-la duplicaria o gasto. PIX enviados a pessoas também ficam fora, porque não dá para saber com o que o dinheiro foi gasto (limitação). O gasto por categoria soma os valores com sinal, para os estornos abaterem as compras. Testado com `testar_analise.py` sobre as categorias da IA (v2-regras): renda R$ 24.820,13, consumo R$ 17.748,65, sobra antes de investimentos e transferências R$ 7.071,48. Os números foram conferidos com um cálculo independente. Consumo + fora do consumo + estornos (R$ 262,38) fecha com as saídas totais de R$ 24.579,57. Teste mínimo: compra de -100 com estorno de +30 dá gasto de 70. Correção feita na revisão: o total de "fora do consumo" passou a ter sinal, porque em valor absoluto os PIX recebidos pareciam saída. Limitação: os números dependem da categorização da IA, que ainda não foi avaliada (bloco 6). Próximo: gráficos e a tela no app.
+
