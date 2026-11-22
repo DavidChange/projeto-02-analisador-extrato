@@ -2,6 +2,8 @@
 
 App em Streamlit que categoriza um extrato bancário com IA (Gemini) e mostra para onde vai o dinheiro.
 
+Modelo: gemini-3.5-flash (reserva: gemini-3.5-flash-lite). Versão do prompt: v2-regras.
+
 > Esta é uma primeira versão do README. O README completo fica para o bloco 7.
 
 ## Dados
@@ -48,9 +50,13 @@ Estas regras ainda não estão no prompt:
 - Loja de apps (Apple/Google) = Lazer e assinaturas.
 - Marketplace com "MERCADO" no nome = Compras e serviços.
 - Pet shop e serviço pessoal = Compras e serviços.
+- Maquininha com nome de pessoa (ex.: PAG*JoseSilva) não conta como nome identificável = Compras e serviços.
 
 ## Limitações conhecidas
 
 1. O estorno é classificado só pela descrição; o app não procura a compra original, que pode estar em outro lote.
 2. As regras foram definidas pelo mesmo autor que vai rotular a avaliação, então a acurácia medida tende a ser otimista.
 3. Dados sintéticos são mais limpos que um extrato real.
+4. O app depende da disponibilidade da API do Gemini. Há tentativas automáticas e um modelo reserva, mas eles ainda não foram postos à prova numa falha real.
+5. O cache da categorização dura só enquanto a aba do navegador estiver aberta.
+6. A avaliação usa as 50 primeiras transações (agosto), não uma amostra aleatória.

@@ -28,3 +28,19 @@ Bloco 2 concluído: app com upload e validação de CSV, ainda sem LLM. extrato.
 
 Corrigido o resumo do app: o período aparecia cortado ('31/10/...'), pois o st.metric trunca textos longos. Agora são duas caixas (primeira e última data).
 
+## 21 e 22/11/2026 — Bloco 3: categorização por LLM
+
+**Chave e modelo.** A chave do Gemini (Google AI Studio, nível gratuito, sem faturamento) fica só no `.env`. O formato novo começa com "AQ." e tem 53 caracteres. Validei a chave listando os modelos pela API, e o `git check-ignore` confirmou que o `.env` fica fora do Git. O gemini-2.5-flash aparecia na lista, mas deu 404 para a conta nova. O gemini-3.8-flash (sugerido pela própria mensagem de erro) deu 503 por alta demanda e depois a conexão caiu, em 2 tentativas. O gemini-3.5-flash funcionou na primeira tentativa e virou o modelo principal. O gemini-3.5-flash-lite respondeu a um teste de 5 transações e virou o modelo reserva. Lição: estar na lista de modelos não garante acesso, e a API pode ficar indisponível.
+
+**Categorizador (`categorizador.py`).** Saída estruturada em JSON com schema (a categoria fica limitada às 13), temperature=0 e validação de ids faltando, extras ou repetidos e de categoria inválida. O prompt `v2-regras` tem 11 regras de negócio e 8 exemplos inventados; conferimos com grep que nenhum exemplo aparece em `transacoes.csv`. As regras secundárias ficaram só no README. A categorização é feita em lotes de 40, com pausa de 4 s, tentativas automáticas em erro temporário (espera de 5, 15 e 30 s) e o modelo reserva.
+
+**Rodada completa.** 307 transações em 8 lotes, 111,9 s, 0 tentativas extras, todas respondidas pelo gemini-3.5-flash. O resultado está em `resultados/categorias_v2-regras.csv`. Limitação: as tentativas automáticas e a troca para o modelo reserva ainda não foram postas à prova, porque não houve nenhuma falha.
+
+**Rótulos manuais (preparação do bloco 6).** Rotulei 50 transações (T001 a T050) sem abrir o gabarito e sem ver o resultado completo da IA. O commit dos rótulos (7a48f86) foi enviado antes do commit com os resultados (e3f7517). Antes do commit, corrigi 3 rótulos que contradiziam as minhas próprias regras (T012, T026, T035). Limitações: a amostra são as 50 primeiras transações (agosto), não uma amostra aleatória; e, para T001 a T005, eu já tinha visto a resposta da IA.
+
+**App (`app.py`).** Botão "Categorizar com IA", barra de progresso por lote, coluna de categoria na tabela, contagem por categoria e erros em português. A categorização é descartada ao trocar de arquivo. Bug: a primeira versão usava `@st.cache_data` com a barra de progresso dentro, e a segunda categorização do mesmo extrato dava `CacheReplayClosureError`. O teste automatizado com um categorizador falso não pegou o erro; o teste manual no navegador pegou. Correção: um cache próprio em `st.session_state`, com chave = extrato + modelo + versão do prompt. Testado no navegador: dados de exemplo (barra até o lote 8 de 8), segunda categorização em menos de 1 s (vinda do cache) e coluna de categoria sumindo ao trocar de arquivo. Limitação: o cache dura só enquanto a aba estiver aberta.
+
+**Teste de fumaça.** Testei com um extrato fictício de novembro (30 transações, montado pelo Claude e mantido fora do repositório). As 30 categorias ficaram coerentes com as regras, inclusive 6 casos de regras secundárias que não estão no prompt. Isso não é métrica: as respostas esperadas foram definidas por quem montou o arquivo, já conhecendo as regras, e 30 casos é pouco. A métrica oficial vem no bloco 6.
+
+**Próximo:** bloco 4 (totais e gráficos com pandas, tratando à parte a fatura do cartão e as aplicações).
+
