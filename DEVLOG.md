@@ -50,3 +50,5 @@ Criado `analise.py`, só com cálculos em pandas (o LLM não calcula nada). Grup
 
 App: seção 'Análise dos gastos' com renda, consumo e sobra, gráfico de gasto por categoria (Altair, maior para menor, eixo e tooltip no formato brasileiro) e tabela 'Fora do consumo' com sinal. Testado no navegador com os dados de exemplo. Corrigido o corte dos valores no st.metric.
 
+Evolução mensal (renda x consumo por mês) e as 10 maiores despesas de consumo no app. Testado no navegador. Bloco 4 concluído. Próximo: bloco 5, 3 recomendações do LLM a partir dos agregados.
+

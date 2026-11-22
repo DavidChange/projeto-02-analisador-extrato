@@ -4,11 +4,28 @@ import json
 import altair as alt
 import streamlit as st
 
-from analise import fora_do_consumo, gasto_por_categoria, juntar_categorias, resumo
+from analise import (
+    evolucao_mensal,
+    fora_do_consumo,
+    gasto_por_categoria,
+    juntar_categorias,
+    maiores_despesas,
+    resumo,
+)
 from categorizador import MODELO, VERSAO_PROMPT, categorizar_todos
 from extrato import carregar_e_validar
 
 CAMINHO_EXEMPLO = "dados/transacoes.csv"
+
+MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+# Eixos no padrão brasileiro: o Altair formata "1,500" e trocamos a vírgula por ponto
+ROTULO_EIXO_BR = "replace(datum.label, regexp(',', 'g'), '.')"
+
+
+def rotulo_mes(mes):
+    """Ex.: '2026-08' -> 'ago/2026'."""
+    ano, numero = mes.split("-")
+    return f"{MESES[int(numero) - 1]}/{ano}"
 
 
 def formatar_reais(valor):
@@ -154,14 +171,10 @@ if guardado is not None:
             alt.Chart(gastos)
             .mark_bar()
             .encode(
-                # Eixo no padrão brasileiro: o Altair formata "1,500" e trocamos a vírgula por ponto
                 x=alt.X(
                     "gasto:Q",
                     title="Gasto (R$)",
-                    axis=alt.Axis(
-                        format=",.0f",
-                        labelExpr="replace(datum.label, regexp(',', 'g'), '.')",
-                    ),
+                    axis=alt.Axis(format=",.0f", labelExpr=ROTULO_EIXO_BR),
                 ),
                 y=alt.Y("categoria:N", sort="-x", title=None),
                 tooltip=[
@@ -171,6 +184,61 @@ if guardado is not None:
             )
         )
         st.altair_chart(grafico, width="stretch")
+
+        # Evolução mensal: barras agrupadas (renda e consumo lado a lado em cada mês)
+        st.subheader("Evolução mensal")
+        mensal = evolucao_mensal(df_cat)
+        mensal["mes_rotulo"] = mensal["mes"].map(rotulo_mes)
+        longo = mensal.melt(
+            id_vars=["mes", "mes_rotulo"],
+            value_vars=["renda", "consumo"],
+            var_name="tipo",
+            value_name="valor",
+        )
+        longo["tipo"] = longo["tipo"].map({"renda": "Renda", "consumo": "Consumo"})
+        longo["valor_formatado"] = longo["valor"].map(formatar_reais)  # para o tooltip
+        grafico_mensal = (
+            alt.Chart(longo)
+            .mark_bar()
+            .encode(
+                x=alt.X(
+                    "mes_rotulo:N",
+                    title=None,
+                    sort=mensal["mes_rotulo"].tolist(),  # ordem cronológica
+                    axis=alt.Axis(labelAngle=0),
+                ),
+                xOffset=alt.XOffset("tipo:N", sort=["Renda", "Consumo"]),
+                y=alt.Y(
+                    "valor:Q",
+                    title="Valor (R$)",
+                    axis=alt.Axis(format=",.0f", labelExpr=ROTULO_EIXO_BR),
+                ),
+                color=alt.Color(
+                    "tipo:N",
+                    title=None,
+                    scale=alt.Scale(domain=["Renda", "Consumo"], range=["#4C78A8", "#F58518"]),
+                ),
+                tooltip=[
+                    alt.Tooltip("mes_rotulo:N", title="Mês"),
+                    alt.Tooltip("tipo:N", title="Tipo"),
+                    alt.Tooltip("valor_formatado:N", title="Valor"),
+                ],
+            )
+        )
+        st.altair_chart(grafico_mensal, width="stretch")
+
+        # As 10 maiores despesas de consumo
+        st.subheader("Maiores despesas")
+        top = maiores_despesas(df_cat, n=10)
+        top_tela = {
+            "ID": top["id"],
+            "Data": top["data"].dt.strftime("%d/%m/%Y"),
+            "Descrição": top["descricao"],
+            "Valor": top["valor"].map(formatar_reais),
+            "Categoria": top["categoria"],
+        }
+        st.dataframe(top_tela, hide_index=True, width="stretch")
+        st.caption("Só despesas de consumo; fatura, PIX a pessoas e aplicações ficam de fora.")
 
         # Tabela do que ficou fora do consumo (valores com sinal)
         st.subheader("Fora do consumo")
