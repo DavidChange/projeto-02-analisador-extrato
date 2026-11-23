@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 
 from analise import (
@@ -8,7 +10,10 @@ from analise import (
     gastos_fixos,
     juntar_categorias,
     maiores_despesas,
+    montar_pacote,
+    renda_fixa_extra_mensal,
     resumo,
+    variavel_por_categoria_mensal,
 )
 from extrato import carregar_e_validar
 
@@ -103,16 +108,16 @@ assert abs((fv["fixo"] + fv["variavel"]).sum() - r["consumo"]) < 0.01, "fixo + v
 print("Fixo + variável = consumo (por mês e no total): OK")
 
 # --- d) Mini-df de 3 meses para o critério de fixo ---
-def linha(i, data, descricao, valor, cat):
-    return {"id": f"F{i}", "data": data, "descricao": descricao, "valor": valor, "categoria": cat}
-
 meses3 = ["2026-01-10", "2026-02-10", "2026-03-10"]
 linhas = []
-n = 0
+
+
 def add(data, descricao, valor, cat):
-    global n
-    n += 1
-    linhas.append(linha(n, pd.Timestamp(data), descricao, valor, cat))
+    linhas.append(
+        {"id": f"F{len(linhas) + 1}", "data": pd.Timestamp(data), "descricao": descricao,
+         "valor": valor, "categoria": cat}
+    )
+
 
 for m in meses3:
     add(m, "ALUGUEL", -1000.0, "Moradia e contas")
@@ -124,6 +129,7 @@ for m, luz, cafe in zip(meses3, [-100.0, -120.0, -140.0], [-10.0, -20.0, -30.0])
     add(m, "CAFE", cafe, "Alimentação fora")
 add("2026-03-15", "ESTORNO UBER", 15.0, "Transporte")
 add("2026-01-20", "PIX ENVIADO JOAO", -200.0, "Transferências")
+add("2026-01-25", "FREELA", 500.0, "Renda")
 mini3 = pd.DataFrame(linhas)
 
 fixos3 = gastos_fixos(mini3)
@@ -142,3 +148,57 @@ assert list(gastos_fixos(mini2).columns) == ["descricao", "categoria", "gasto_me
 assert fixo_variavel_mensal(mini2).empty
 assert list(fixo_variavel_mensal(mini2).columns) == ["mes", "fixo", "variavel"]
 print("Mini-df de 2 meses (vazio): OK")
+
+# --- f) Renda fixa x extra (mini-df de 3 meses) ---
+rfe3 = renda_fixa_extra_mensal(mini3)
+assert rfe3["renda_fixa"].tolist() == [3000.0, 3000.0, 3000.0], rfe3
+assert rfe3["renda_extra"].tolist() == [500.0, 0.0, 0.0], rfe3
+print("Renda fixa x extra (mini 3 meses): OK")
+
+# --- g) Gasto variável por categoria ---
+vc3 = variavel_por_categoria_mensal(mini3)
+assert vc3["categoria"].tolist() == ["Alimentação fora", "Transporte"], vc3
+assert vc3.loc[0, ["2026-01", "2026-02", "2026-03", "diferenca"]].tolist() == [10.0, 20.0, 30.0, 20.0]
+assert vc3.loc[1, ["2026-01", "2026-02", "2026-03", "diferenca"]].tolist() == [30.0, 30.0, 15.0, -15.0]
+
+presente = pd.DataFrame(
+    [{"id": "F99", "data": pd.Timestamp("2026-02-20"), "descricao": "PRESENTE",
+      "valor": -60.0, "categoria": "Compras e serviços"}]
+)
+vc3p = variavel_por_categoria_mensal(pd.concat([mini3, presente], ignore_index=True))
+compras = vc3p.set_index("categoria").loc["Compras e serviços"]
+assert compras[["2026-01", "2026-02", "2026-03", "diferenca"]].tolist() == [0.0, 60.0, 0.0, 0.0], compras
+assert not vc3p.isna().any().any(), "NaN no variável por categoria"
+print("Variável por categoria (mini 3 meses, estorno abate, 0 no lugar de NaN): OK")
+
+# --- h) Mini-df de 2 meses ---
+assert renda_fixa_extra_mensal(mini2).empty
+assert list(renda_fixa_extra_mensal(mini2).columns) == ["mes", "renda_fixa", "renda_extra"]
+assert variavel_por_categoria_mensal(mini2).empty
+assert list(variavel_por_categoria_mensal(mini2).columns) == ["categoria", "diferenca"]
+try:
+    montar_pacote(mini2)
+    raise AssertionError("era para dar ValueError")
+except ValueError as e:
+    assert str(e) == "São necessários pelo menos 3 meses de extrato para gerar recomendações.", e
+print("Mini-df de 2 meses (vazios e ValueError): OK")
+
+# --- i) Pacote para o LLM, com as categorias da IA ---
+pacote = montar_pacote(df)
+texto = json.dumps(pacote, ensure_ascii=False, indent=2)
+print("\n=== montar_pacote ===")
+print(texto)
+
+for m in pacote["mensal"]:
+    assert abs(m["renda_fixa"] + m["renda_extra"] - m["renda"]) < 0.01, m
+    assert abs(m["fixo"] + m["variavel"] - m["consumo"]) < 0.01, m
+    soma_cat = sum(c[m["mes"]] for c in pacote["variavel_por_categoria"])
+    assert abs(soma_cat - m["variavel"]) < 0.01, (m["mes"], soma_cat, m["variavel"])
+soma_dif = sum(c["diferenca"] for c in pacote["variavel_por_categoria"])
+assert abs(soma_dif - pacote["diferenca_primeiro_ultimo_mes"]["variavel"]) < 0.01
+soma_sobra = sum(m["sobra"] for m in pacote["mensal"])
+assert abs(soma_sobra - pacote["totais"]["sobra"]) < 0.01
+assert abs(pacote["totais"]["sobra"] - resumo(df)["saldo"]) < 0.01
+assert "-0.0" not in texto, "zero negativo no JSON"
+assert "UBER" not in texto and "PIX RECEBIDO" not in texto
+print("\nPacote: coerência, JSON e privacidade (sem UBER nem PIX RECEBIDO): OK")

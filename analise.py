@@ -20,8 +20,8 @@ def _consumo(df):
 
 
 def _reais(valor):
-    """Número simples (float) arredondado a 2 casas."""
-    return round(float(valor), 2)
+    """Número simples (float) arredondado a 2 casas (sem o -0.0)."""
+    return round(float(valor), 2) + 0.0
 
 
 def juntar_categorias(df, categorias):
@@ -139,6 +139,32 @@ def _saidas_consumo(df):
     return saidas
 
 
+def _recorrentes(linhas, meses):
+    """Descrições recorrentes: DataFrame (chave, categoria, media, variacao), valores em módulo.
+
+    'linhas' precisa das colunas mes, chave, categoria e valor. Recorrente = aparece exatamente
+    uma vez em cada mês de 'meses' e (maior - menor) / média <= LIMITE_VARIACAO_FIXO.
+    media e variacao saem sem arredondar.
+    """
+    resultado = []
+    for chave, grupo in linhas.groupby("chave"):
+        if len(grupo) != len(meses) or grupo["mes"].nunique() != len(meses):
+            continue
+        valores = grupo["valor"].abs()
+        media = valores.mean()
+        variacao = (valores.max() - valores.min()) / media
+        if variacao <= LIMITE_VARIACAO_FIXO:
+            resultado.append(
+                {
+                    "chave": chave,
+                    "categoria": grupo["categoria"].iloc[0],
+                    "media": media,
+                    "variacao": variacao,
+                }
+            )
+    return pd.DataFrame(resultado, columns=["chave", "categoria", "media", "variacao"])
+
+
 def gastos_fixos(df):
     """DataFrame (descricao, categoria, gasto_medio, variacao) dos gastos fixos, do maior para o menor.
 
@@ -151,24 +177,16 @@ def gastos_fixos(df):
     if len(meses) < MESES_MINIMOS_FIXO:
         return pd.DataFrame(columns=colunas)
 
-    saidas = _saidas_consumo(df)
-    linhas = []
-    for chave, grupo in saidas.groupby("chave"):
-        if len(grupo) != len(meses) or grupo["mes"].nunique() != len(meses):
-            continue
-        gastos = -grupo["valor"]
-        media = gastos.mean()
-        variacao = (gastos.max() - gastos.min()) / media
-        if variacao <= LIMITE_VARIACAO_FIXO:
-            linhas.append(
-                {
-                    "descricao": chave,
-                    "categoria": grupo["categoria"].iloc[0],
-                    "gasto_medio": _reais(media),
-                    "variacao": round(float(variacao), 3),
-                }
-            )
-    resultado = pd.DataFrame(linhas, columns=colunas)
+    rec = _recorrentes(_saidas_consumo(df), meses)
+    resultado = pd.DataFrame(
+        {
+            "descricao": rec["chave"],
+            "categoria": rec["categoria"],
+            "gasto_medio": [_reais(m) for m in rec["media"]],
+            "variacao": [round(float(v), 3) for v in rec["variacao"]],
+        },
+        columns=colunas,
+    )
     return resultado.sort_values("gasto_medio", ascending=False).reset_index(drop=True)
 
 
@@ -195,3 +213,116 @@ def fixo_variavel_mensal(df):
             "variavel": (mensal["consumo"].values - fixo).round(2),
         }
     )
+
+
+def renda_fixa_extra_mensal(df):
+    """DataFrame (mes, renda_fixa, renda_extra), um por mês, em reais positivos.
+
+    renda_fixa = entradas da categoria Renda cuja descrição é recorrente (uma vez por mês em
+    todos os meses, variação de até LIMITE_VARIACAO_FIXO), como o salário.
+    renda_extra = renda do mês (como em evolucao_mensal) - renda_fixa.
+    Com menos de MESES_MINIMOS_FIXO meses, devolve vazio.
+    """
+    colunas = ["mes", "renda_fixa", "renda_extra"]
+    meses = _meses_do_extrato(df)
+    if len(meses) < MESES_MINIMOS_FIXO:
+        return pd.DataFrame(columns=colunas)
+
+    entradas = df[(df["categoria"] == CATEGORIA_RENDA) & (df["valor"] > 0)].copy()
+    entradas["mes"] = entradas["data"].dt.strftime("%Y-%m")
+    entradas["chave"] = entradas["descricao"].str.upper().str.strip()
+    rec = _recorrentes(entradas, meses)
+    fixas = entradas[entradas["chave"].isin(rec["chave"])]
+    fixa = fixas["valor"].groupby(fixas["mes"]).sum().reindex(meses, fill_value=0).round(2).values
+
+    renda = evolucao_mensal(df)["renda"].values
+    return pd.DataFrame(
+        {"mes": meses, "renda_fixa": fixa, "renda_extra": (renda - fixa).round(2)}
+    )
+
+
+def variavel_por_categoria_mensal(df):
+    """DataFrame (categoria, uma coluna por mês 'AAAA-MM', diferenca) do consumo variável.
+
+    Consumo variável = linhas de consumo (estornos abatem) cujas descrições NÃO estão em
+    gastos_fixos(df). Reais positivos; mês sem gasto = 0.00. diferenca = último mês - primeiro
+    mês, da maior para a menor. Com menos de MESES_MINIMOS_FIXO meses, devolve só
+    categoria e diferenca, vazio.
+    """
+    meses = _meses_do_extrato(df)
+    if len(meses) < MESES_MINIMOS_FIXO:
+        return pd.DataFrame(columns=["categoria", "diferenca"])
+
+    consumo = _consumo(df).copy()
+    consumo["mes"] = consumo["data"].dt.strftime("%Y-%m")
+    consumo["chave"] = consumo["descricao"].str.upper().str.strip()
+    variavel = consumo[~consumo["chave"].isin(gastos_fixos(df)["descricao"])]
+
+    tabela = -variavel.pivot_table(
+        index="categoria", columns="mes", values="valor", aggfunc="sum", fill_value=0
+    )
+    tabela = tabela.reindex(columns=meses, fill_value=0).round(2)
+    tabela["diferenca"] = (tabela[meses[-1]] - tabela[meses[0]]).round(2)
+    tabela = tabela.sort_values("diferenca", ascending=False, kind="stable")
+    tabela.columns.name = None
+    return tabela.reset_index()
+
+
+def montar_pacote(df):
+    """Dict só com números calculados pelo pandas: o ÚNICO conteúdo que vai para o LLM.
+
+    Não leva nenhuma transação individual: só totais, valores por mês, variação entre o
+    primeiro e o último mês, gasto variável por categoria e a lista de gastos fixos
+    (descrição e média). Todos os números são float do Python, com 2 casas.
+    Com menos de MESES_MINIMOS_FIXO meses, levanta ValueError.
+    """
+    meses = _meses_do_extrato(df)
+    if len(meses) < MESES_MINIMOS_FIXO:
+        raise ValueError(
+            f"São necessários pelo menos {MESES_MINIMOS_FIXO} meses de extrato "
+            "para gerar recomendações."
+        )
+
+    mensal = (
+        evolucao_mensal(df)
+        .merge(renda_fixa_extra_mensal(df), on="mes")
+        .merge(fixo_variavel_mensal(df), on="mes")
+    )
+    mensal["sobra"] = (mensal["renda"] - mensal["consumo"]).round(2)
+    campos = ["renda", "renda_fixa", "renda_extra", "consumo", "fixo", "variavel", "sobra"]
+
+    lista_mensal = [
+        {"mes": linha["mes"], **{c: _reais(linha[c]) for c in campos}}
+        for _, linha in mensal.iterrows()
+    ]
+    diferenca = {
+        c: _reais(mensal[c].iloc[-1] - mensal[c].iloc[0]) for c in campos
+    }
+
+    r = resumo(df)
+    investimentos = df[(df["categoria"] == "Investimentos") & (df["valor"] < 0)]["valor"].sum()
+    por_categoria = [
+        {
+            "categoria": linha["categoria"],
+            **{m: _reais(linha[m]) for m in meses},
+            "diferenca": _reais(linha["diferenca"]),
+        }
+        for _, linha in variavel_por_categoria_mensal(df).iterrows()
+    ]
+    fixos = [
+        {"descricao": linha["descricao"], "gasto_medio": _reais(linha["gasto_medio"])}
+        for _, linha in gastos_fixos(df).iterrows()
+    ]
+    return {
+        "meses": meses,
+        "mensal": lista_mensal,
+        "diferenca_primeiro_ultimo_mes": diferenca,
+        "totais": {
+            "renda": r["renda"],
+            "consumo": r["consumo"],
+            "sobra": r["saldo"],
+            "investimentos_aplicados": _reais(-investimentos),
+        },
+        "variavel_por_categoria": por_categoria,
+        "gastos_fixos": fixos,
+    }
