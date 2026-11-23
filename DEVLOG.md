@@ -54,3 +54,7 @@ Evolução mensal (renda x consumo por mês) e as 10 maiores despesas de consumo
 
 Esclarecimento (23/11): a correção de sinal valeu só para fora_do_consumo() (tabela do app). O resumo() tinha um total só das saídas, em módulo (R$ 6.568,54), com o mesmo nome; ele foi renomeado para saidas_fora_consumo e documentado, para não ser confundido com o saldo com sinal (-R$ 4.749,51). Esse total não aparece na tela. O testar_analise.py agora tem asserts para o sinal dos PIX enviados e recebidos e para transferências não mexerem na sobra.
 
+## 23/11/2026 — Bloco 5: recomendações do LLM
+
+**Decisão: o que é gasto fixo.** Gasto fixo é uma saída de consumo cuja descrição aparece uma vez por mês em todos os meses do extrato, com variação de valor de até 50% ((maior − menor) / média). O resto do consumo é variável. Se o extrato tiver menos de 3 meses, o app não faz a separação. Motivo: só "aparecer todo mês" puxaria hábitos para o fixo (saque 24h, açougue e Café Central aparecem uma vez por mês, mas variam de 64% a 77%), e exigir valor idêntico deixaria a conta de luz de fora (varia 36%). Limitações: o limite de 50% foi escolhido olhando estes dados sintéticos; 3 meses é pouca evidência; o IOF de R$ 3,85 entra como fixo sem ser; conta anual ou que muda de nome não é detectada; e a separação depende da categoria dada pela IA (o aluguel é um PIX que a IA colocou em Moradia). Os totais de fixo e variável serão registrados depois de testados na função.
+
