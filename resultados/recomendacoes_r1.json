@@ -1,0 +1,41 @@
+{
+  "versao_prompt": "r1",
+  "modelo": "gemini-3.5-flash",
+  "tentativas_extras": 0,
+  "resposta_bruta": {
+    "recomendacoes": [
+      {
+        "titulo": "Adequação do orçamento à renda fixa",
+        "diagnostico": "Em três meses, a sobra registrou {diferenca.sobra}. Essa redução ocorreu principalmente porque a renda extra teve {diferenca.renda_extra}, enquanto a renda fixa apresentou {diferenca.renda_fixa}.",
+        "acao": "Organize o seu consumo essencial com base na renda fixa de {2026-10.renda_fixa}, direcionando rendas extras para reservas quando elas ocorrerem."
+      },
+      {
+        "titulo": "Acompanhamento das despesas variáveis",
+        "diagnostico": "O gasto variável apresentou {diferenca.variavel} entre agosto e outubro. Os principais destaques foram a categoria Compras e serviços, que teve {Compras e serviços.diferenca}, e Transporte, que registrou {Transporte.diferenca}.",
+        "acao": "Defina um teto mensal para compras e transporte, monitorando seus gastos semanalmente para evitar que pequenas compras elevem o consumo total."
+      },
+      {
+        "titulo": "Identificação da categoria Outros",
+        "diagnostico": "A categoria Outros registrou {Outros.diferenca}, totalizando {Outros.2026-10} em outubro. Gastos não categorizados dificultam o mapeamento real do seu orçamento.",
+        "acao": "Registre a destinação de saques ou pagamentos genéricos logo após a realização, garantindo clareza sobre onde o seu dinheiro está sendo utilizado."
+      }
+    ]
+  },
+  "recomendacoes": [
+    {
+      "titulo": "Adequação do orçamento à renda fixa",
+      "diagnostico": "Em três meses, a sobra registrou queda de R$ 1.800,68. Essa redução ocorreu principalmente porque a renda extra teve queda de R$ 1.477,74, enquanto a renda fixa apresentou sem variação.",
+      "acao": "Organize o seu consumo essencial com base na renda fixa de R$ 7.500,00, direcionando rendas extras para reservas quando elas ocorrerem."
+    },
+    {
+      "titulo": "Acompanhamento das despesas variáveis",
+      "diagnostico": "O gasto variável apresentou alta de R$ 272,60 entre agosto e outubro. Os principais destaques foram a categoria Compras e serviços, que teve alta de R$ 177,44, e Transporte, que registrou alta de R$ 176,19.",
+      "acao": "Defina um teto mensal para compras e transporte, monitorando seus gastos semanalmente para evitar que pequenas compras elevem o consumo total."
+    },
+    {
+      "titulo": "Identificação da categoria Outros",
+      "diagnostico": "A categoria Outros registrou alta de R$ 70,89, totalizando R$ 134,93 em outubro. Gastos não categorizados dificultam o mapeamento real do seu orçamento.",
+      "acao": "Registre a destinação de saques ou pagamentos genéricos logo após a realização, garantindo clareza sobre onde o seu dinheiro está sendo utilizado."
+    }
+  ]
+}

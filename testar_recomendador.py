@@ -1,11 +1,16 @@
 """Testes de recomendador.py. Não chama a API do Gemini."""
 
+import json
+
 import pandas as pd
 
 from analise import juntar_categorias, montar_pacote
 from categorizador import ErroValidacao
 from extrato import carregar_e_validar
+import recomendador
 from recomendador import (
+    gerar_recomendacoes,
+    montar_prompt,
     formatar_reais,
     lista_para_prompt,
     montar_marcadores,
@@ -105,3 +110,63 @@ deve_falhar(resposta_com(rec(diagnostico="Veja {Transporte.diferenca")), "marcad
 deve_falhar({"recomendacoes": [rec(), rec()]}, "só 2 recomendações")
 deve_falhar(resposta_com(rec(acao="")), "acao vazia")
 print("OK: respostas inválidas levantam ErroValidacao")
+deve_falhar(resposta_com(rec(diagnostico="Transporte subiu trinta e sete por cento.")), "por cento")
+deve_falhar(resposta_com(rec(diagnostico="A sobra caiu mais de mil reais.")), "reais")
+deve_falhar(resposta_com(rec(diagnostico="O variável é quase o dobro do fixo.")), "dobro")
+print("OK: expressões proibidas (por cento, reais, dobro) levantam ErroValidacao")
+
+# --- g) gerar_recomendacoes com Gemini falso (sem API) ---
+prompt = montar_prompt(pacote, marcadores)
+assert "{diferenca.sobra}" in prompt.split("MARCADORES DISPONÍVEIS")[0], "exemplo literal ausente"
+assert "de três meses" in prompt and "{n_meses}" not in prompt and "{lista}" not in prompt
+assert "{2026-10.sobra} -> R$ 1.400,46" in prompt
+print("OK: prompt r1 (exemplo com chaves literal, 'três' no lugar de {n_meses}, lista no fim)")
+
+
+def gemini_falso(respostas, prompts, modelos=None):
+    def chamar(prompt, modelo):
+        prompts.append(prompt)
+        if modelos is not None:
+            modelos.append(modelo)
+        item = respostas[min(len(prompts) - 1, len(respostas) - 1)]
+        if isinstance(item, Exception):
+            raise item
+        return json.dumps(item, ensure_ascii=False)
+    return chamar
+
+
+com_digito = resposta_com(rec(diagnostico="Transporte subiu 37%."))
+prompts = []
+resultado = gerar_recomendacoes(pacote, chamar=gemini_falso([com_digito, valida], prompts))
+assert len(resultado["recomendacoes"]) == 3
+assert resultado["tentativas_extras"] == 1
+assert resultado["versao_prompt"] == "r1"
+assert resultado["recomendacoes"][0]["diagnostico"] == (
+    "Entre agosto e outubro, a sobra teve queda de R$ 1.800,68."
+)
+assert "{diferenca.sobra}" in resultado["resposta_bruta"]["recomendacoes"][0]["diagnostico"]
+assert len(prompts) == 2
+assert "Sua resposta anterior foi recusada pelo motivo" not in prompts[0]
+assert "Sua resposta anterior foi recusada pelo motivo" in prompts[1]
+print("OK: resposta recusada + resposta válida -> 3 recomendações, 1 tentativa extra")
+
+try:
+    gerar_recomendacoes(pacote, chamar=gemini_falso([com_digito, com_digito], []))
+    raise AssertionError("era para dar RuntimeError")
+except RuntimeError as e:
+    print(f"  erro esperado (duas respostas inválidas): {e}")
+print("OK: duas respostas inválidas -> RuntimeError")
+
+
+class ErroFalso503(Exception):
+    code = 503
+
+
+recomendador.ESPERAS_TENTATIVAS = [0, 0, 0]  # sem esperar de verdade no teste
+modelos = []
+resultado = gerar_recomendacoes(
+    pacote, chamar=gemini_falso([ErroFalso503()] * 4 + [valida], [], modelos)
+)
+assert resultado["modelo"] == recomendador.MODELO_RESERVA, resultado["modelo"]
+assert modelos == [recomendador.MODELO] * 4 + [recomendador.MODELO_RESERVA], modelos
+print("OK: erro temporário esgotado -> 1 tentativa com o modelo reserva")
