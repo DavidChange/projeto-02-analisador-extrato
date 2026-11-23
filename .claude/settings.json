@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./dados/gabarito.csv)",
+      "Edit(./dados/gabarito.csv)"
+    ]
+  }
+}
