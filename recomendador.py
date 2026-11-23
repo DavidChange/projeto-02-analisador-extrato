@@ -36,7 +36,7 @@ CAMPOS_RECOMENDACAO = ["titulo", "diagnostico", "acao"]
 NUMERO_RECOMENDACOES = 3
 # Palavras que levam a números ou contas escritos por extenso; o LLM não pode usá-las.
 EXPRESSOES_PROIBIDAS = ["por cento", "reais", "metade", "dobro", "triplo"]
-VERSAO_PROMPT_RECOMENDACOES = "r1"
+VERSAO_PROMPT_RECOMENDACOES = "r2"
 
 # Marcador = texto entre { e }, sem chaves dentro.
 _PADRAO_MARCADOR = re.compile(r"\{[^{}]*\}")
@@ -56,13 +56,13 @@ def _mes_extenso(mes):
 
 
 def _texto_diferenca(valor):
-    """Direção escrita pelo Python: 'alta de R$ X', 'queda de R$ X' ou 'sem variação'."""
+    """Direção escrita pelo Python: 'alta de R$ X', 'queda de R$ X' ou 'variação de R$ 0,00'."""
     valor = round(float(valor), 2)
     if valor > 0:
         return f"alta de {formatar_reais(valor)}"
     if valor < 0:
         return f"queda de {formatar_reais(abs(valor))}"
-    return "sem variação"
+    return "variação de R$ 0,00"
 
 
 def montar_marcadores(pacote):
@@ -187,26 +187,27 @@ def preencher_resposta(resposta, marcadores):
     ]
 
 
-PROMPT_R1 = """\
+PROMPT_R2 = """\
 Você é um assistente de educação financeira. Escreva exatamente 3 recomendações para uma pessoa, a partir de um resumo do extrato bancário dela de {n_meses} meses.
 
 COMO ESCREVER NÚMEROS (regra mais importante)
 - Você NÃO pode escrever nenhum número, valor ou porcentagem. Onde precisar de um valor, copie o MARCADOR exatamente como está na lista abaixo, com as chaves. O sistema troca cada marcador pelo valor.
 - Não faça contas: nada de somas, médias, porcentagens, proporções ou projeções. Não use as palavras "reais", "por cento", "metade", "dobro" ou "triplo".
 - Contagens de tempo vão por extenso (ex.: "três meses") e meses pelo nome (ex.: "outubro").
-- Os marcadores de diferença já trazem a direção: viram "alta de R$ ...", "queda de R$ ..." ou "sem variação". Escreva, por exemplo, "a sobra teve {diferenca.sobra}", sem verbos como "subiu" ou "caiu" antes deles.
+- Os marcadores de diferença já trazem a direção: viram "alta de R$ ...", "queda de R$ ..." ou "variação de R$ 0,00". Escreva, por exemplo, "a sobra teve {diferenca.sobra}", sem verbos como "subiu" ou "caiu" antes deles.
 
 DEFINIÇÕES
 - Consumo: gastos do dia a dia, sem transferências e investimentos.
 - Gasto fixo: aparece uma vez por mês, todo mês, com valor estável (ex.: aluguel, assinaturas). Gasto variável: o resto do consumo.
 - Renda fixa: entrada que se repete todo mês (ex.: salário). Renda extra: entradas que não se repetem (ex.: trabalhos avulsos).
 - Sobra: renda menos consumo, antes de investimentos e transferências.
-- Categoria "Outros": gastos sem categoria clara, como saques em dinheiro.
+- Categoria "Outros": gastos que não se encaixam nas outras categorias, como saques em dinheiro.
 
 CONTEÚDO
-- Baseie-se nas maiores variações e nos maiores valores da lista.
+- Priorize o que tem mais impacto em reais: categorias com valores mensais altos ou com altas grandes. Não faça recomendação sobre uma categoria cujo valor mensal é pequeno perto das outras.
 - Se a queda da sobra vier principalmente da renda extra, diga isso; não atribua ao consumo uma queda que vem da renda.
 - Gastos fixos são difíceis de cortar no curto prazo: não faça as três recomendações sobre eles.
+- Quando sugerir um limite ou uma meta, use um marcador como referência (ex.: o valor do primeiro mês da categoria).
 - Cada recomendação tem: titulo (curto), diagnostico (o que os números mostram) e acao (o que a pessoa pode fazer, de forma concreta).
 - Fale com a pessoa usando "você", em português do Brasil, com tom de educação financeira. Não indique produtos financeiros, bancos ou investimentos específicos.
 
@@ -235,10 +236,10 @@ SCHEMA_RECOMENDACOES = {
 
 
 def montar_prompt(pacote, marcadores):
-    """Prompt r1: troca só {n_meses} (por extenso) e {lista}; o resto fica literal."""
+    """Prompt r2: troca só {n_meses} (por extenso) e {lista}; o resto fica literal."""
     n = len(pacote["meses"])
     por_extenso = _NUMEROS_POR_EXTENSO.get(n, str(n))
-    return PROMPT_R1.replace("{n_meses}", por_extenso).replace(
+    return PROMPT_R2.replace("{n_meses}", por_extenso).replace(
         "{lista}", lista_para_prompt(marcadores)
     )
 

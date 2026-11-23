@@ -41,7 +41,7 @@ print("\nOK: formatar_reais (milhar, centavos, zero e negativo)")
 esperado = {
     "{diferenca.sobra}": "queda de R$ 1.800,68",
     "{Transporte.diferenca}": "alta de R$ 176,19",
-    "{diferenca.renda_fixa}": "sem variação",
+    "{diferenca.renda_fixa}": "variação de R$ 0,00",
     "{2026-10.sobra}": "R$ 1.400,46",
     "{fixo_1}": "R$ 1.350,00",
     "{total.investimentos_aplicados}": "R$ 1.076,33",
@@ -120,7 +120,10 @@ prompt = montar_prompt(pacote, marcadores)
 assert "{diferenca.sobra}" in prompt.split("MARCADORES DISPONÍVEIS")[0], "exemplo literal ausente"
 assert "de três meses" in prompt and "{n_meses}" not in prompt and "{lista}" not in prompt
 assert "{2026-10.sobra} -> R$ 1.400,46" in prompt
-print("OK: prompt r1 (exemplo com chaves literal, 'três' no lugar de {n_meses}, lista no fim)")
+assert '"variação de R$ 0,00"' in prompt and "sem variação" not in prompt
+assert "Priorize o que tem mais impacto em reais" in prompt and "use um marcador como referência" in prompt
+assert "{diferenca.renda_fixa} -> variação de R$ 0,00" in prompt
+print("OK: prompt r2 (exemplo com chaves literal, 'três' no lugar de {n_meses}, lista no fim)")
 
 
 def gemini_falso(respostas, prompts, modelos=None):
@@ -140,7 +143,7 @@ prompts = []
 resultado = gerar_recomendacoes(pacote, chamar=gemini_falso([com_digito, valida], prompts))
 assert len(resultado["recomendacoes"]) == 3
 assert resultado["tentativas_extras"] == 1
-assert resultado["versao_prompt"] == "r1"
+assert resultado["versao_prompt"] == "r2"
 assert resultado["recomendacoes"][0]["diagnostico"] == (
     "Entre agosto e outubro, a sobra teve queda de R$ 1.800,68."
 )

@@ -30,6 +30,7 @@ saida = {
     "resposta_bruta": resultado["resposta_bruta"],
     "recomendacoes": resultado["recomendacoes"],
 }
-with open("resultados/recomendacoes_r1.json", "w", encoding="utf-8") as f:
+arquivo = f"resultados/recomendacoes_{resultado['versao_prompt']}.json"
+with open(arquivo, "w", encoding="utf-8") as f:
     json.dump(saida, f, ensure_ascii=False, indent=2)
-print("Salvo em resultados/recomendacoes_r1.json")
+print(f"Salvo em {arquivo}")

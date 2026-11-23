@@ -1,0 +1,41 @@
+{
+  "versao_prompt": "r2",
+  "modelo": "gemini-3.5-flash",
+  "tentativas_extras": 0,
+  "resposta_bruta": {
+    "recomendacoes": [
+      {
+        "titulo": "Atenção ao impacto da redução da renda extra",
+        "diagnostico": "Ao longo de três meses, a sua sobra teve {diferenca.sobra}. Esse resultado ocorreu principalmente porque a sua renda extra teve {diferenca.renda_extra}, enquanto a sua renda fixa apresentou {diferenca.renda_fixa}.",
+        "acao": "Organize o seu planejamento orçamentário considerando apenas a sua renda fixa de {2026-10.renda_fixa}, destinando eventuais entradas adicionais para a sua reserva."
+      },
+      {
+        "titulo": "Controle das despesas com compras e serviços",
+        "diagnostico": "As suas despesas na categoria de compras e serviços registraram {Compras e serviços.diferenca}, passando do valor de {Compras e serviços.2026-08} em agosto para {Compras e serviços.2026-10} em outubro.",
+        "acao": "Defina um limite mensal de gastos para essa categoria usando como referência o valor de {Compras e serviços.2026-08} registrado em agosto."
+      },
+      {
+        "titulo": "Acompanhamento dos gastos com transporte",
+        "diagnostico": "Os seus custos variáveis com transporte tiveram {Transporte.diferenca}, alterando de {Transporte.2026-08} no mês de agosto para {Transporte.2026-10} no mês de outubro.",
+        "acao": "Revisite a sua rotina de deslocamentos para buscar uma otimização, visando retomar o patamar de {Transporte.2026-08} observado no primeiro mês."
+      }
+    ]
+  },
+  "recomendacoes": [
+    {
+      "titulo": "Atenção ao impacto da redução da renda extra",
+      "diagnostico": "Ao longo de três meses, a sua sobra teve queda de R$ 1.800,68. Esse resultado ocorreu principalmente porque a sua renda extra teve queda de R$ 1.477,74, enquanto a sua renda fixa apresentou variação de R$ 0,00.",
+      "acao": "Organize o seu planejamento orçamentário considerando apenas a sua renda fixa de R$ 7.500,00, destinando eventuais entradas adicionais para a sua reserva."
+    },
+    {
+      "titulo": "Controle das despesas com compras e serviços",
+      "diagnostico": "As suas despesas na categoria de compras e serviços registraram alta de R$ 177,44, passando do valor de R$ 502,01 em agosto para R$ 679,45 em outubro.",
+      "acao": "Defina um limite mensal de gastos para essa categoria usando como referência o valor de R$ 502,01 registrado em agosto."
+    },
+    {
+      "titulo": "Acompanhamento dos gastos com transporte",
+      "diagnostico": "Os seus custos variáveis com transporte tiveram alta de R$ 176,19, alterando de R$ 480,50 no mês de agosto para R$ 656,69 no mês de outubro.",
+      "acao": "Revisite a sua rotina de deslocamentos para buscar uma otimização, visando retomar o patamar de R$ 480,50 observado no primeiro mês."
+    }
+  ]
+}
