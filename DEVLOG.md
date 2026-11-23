@@ -52,3 +52,5 @@ App: seção 'Análise dos gastos' com renda, consumo e sobra, gráfico de gasto
 
 Evolução mensal (renda x consumo por mês) e as 10 maiores despesas de consumo no app. Testado no navegador. Bloco 4 concluído. Próximo: bloco 5, 3 recomendações do LLM a partir dos agregados.
 
+Esclarecimento (23/11): a correção de sinal valeu só para fora_do_consumo() (tabela do app). O resumo() tinha um total só das saídas, em módulo (R$ 6.568,54), com o mesmo nome; ele foi renomeado para saidas_fora_consumo e documentado, para não ser confundido com o saldo com sinal (-R$ 4.749,51). Esse total não aparece na tela. O testar_analise.py agora tem asserts para o sinal dos PIX enviados e recebidos e para transferências não mexerem na sobra.
+

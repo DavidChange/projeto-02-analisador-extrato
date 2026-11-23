@@ -38,19 +38,21 @@ def juntar_categorias(df, categorias):
 
 
 def resumo(df):
-    """Dict com renda, consumo, fora_consumo e saldo (renda - consumo), em reais positivos.
+    """Dict com renda, consumo, saidas_fora_consumo e saldo (renda - consumo), em reais positivos.
 
     consumo: soma com sinal (estornos abatem as compras), em módulo.
-    fora_consumo: só o dinheiro que SAIU em categorias fora do consumo, em módulo.
+    saidas_fora_consumo: soma só das SAÍDAS de Transferências e Investimentos, em valor
+        positivo. NÃO é o mesmo que somar fora_do_consumo(): aquela tem sinal e inclui as
+        entradas (como os PIX recebidos).
     """
     renda = df.loc[df["categoria"] == CATEGORIA_RENDA, "valor"].sum()
     consumo = -_consumo(df)["valor"].sum()
     fora = df[df["categoria"].isin(CATEGORIAS_FORA_CONSUMO) & (df["valor"] < 0)]
-    fora_consumo = -fora["valor"].sum()
+    saidas_fora_consumo = -fora["valor"].sum()
     return {
         "renda": _reais(renda),
         "consumo": _reais(consumo),
-        "fora_consumo": _reais(fora_consumo),
+        "saidas_fora_consumo": _reais(saidas_fora_consumo),
         "saldo": _reais(renda - consumo),
     }
 
