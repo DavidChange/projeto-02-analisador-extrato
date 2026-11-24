@@ -1,21 +1,28 @@
 import hashlib
 import json
+import os
 
 import altair as alt
+import pandas as pd
 import streamlit as st
 
 from analise import (
     evolucao_mensal,
+    fixo_variavel_mensal,
     fora_do_consumo,
     gasto_por_categoria,
+    gastos_fixos,
     juntar_categorias,
     maiores_despesas,
+    montar_pacote,
     resumo,
 )
 from categorizador import MODELO, VERSAO_PROMPT, categorizar_todos
 from extrato import carregar_e_validar
+from recomendador import VERSAO_PROMPT_RECOMENDACOES, gerar_recomendacoes
 
 CAMINHO_EXEMPLO = "dados/transacoes.csv"
+CAMINHO_CATEGORIAS_EXEMPLO = "resultados/categorias_v2-regras.csv"
 
 MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 # Eixos no padrão brasileiro: o Altair formata "1,500" e trocamos a vírgula por ponto
@@ -95,6 +102,29 @@ assinatura = hashlib.sha256(
 guardado = st.session_state.get("categorias")
 if guardado is not None and guardado["assinatura"] != assinatura:
     del st.session_state["categorias"]
+# Categorias pré-calculadas só valem para o exemplo: um upload sempre começa sem categorias
+elif guardado is not None and "origem" in guardado and fonte != CAMINHO_EXEMPLO:
+    del st.session_state["categorias"]
+
+# Exemplo sem categorias na sessão: carrega as já salvas em arquivo (sem chamar o Gemini)
+if fonte == CAMINHO_EXEMPLO and "categorias" not in st.session_state:
+    if os.path.exists(CAMINHO_CATEGORIAS_EXEMPLO):
+        salvas = pd.read_csv(CAMINHO_CATEGORIAS_EXEMPLO, dtype=str)
+        ids_extrato = sorted(t["id"] for t in transacoes)
+        if sorted(salvas["id"]) == ids_extrato:
+            st.session_state["categorias"] = {
+                "assinatura": assinatura,
+                "resultado": salvas[["id", "categoria", "modelo"]].to_dict("records"),
+                "origem": {
+                    "modelo": ", ".join(sorted(set(salvas["modelo"]))),
+                    "versao_prompt": ", ".join(sorted(set(salvas["versao_prompt"]))),
+                },
+            }
+        else:
+            st.warning(
+                "As categorias salvas não correspondem ao extrato de exemplo; "
+                "use o botão Categorizar com IA."
+            )
 
 if st.button("Categorizar com IA"):
     # Cache simples na sessão: (extrato, modelo, prompt) -> resultado. Não usa @st.cache_data
@@ -131,6 +161,13 @@ if guardado is not None:
     tabela["categoria"] = tabela["id"].astype(str).map(mapa)
 
 with area_tabela:
+    if guardado is not None and "origem" in guardado:
+        st.info(
+            f"Categorias pré-calculadas pelo Gemini ({guardado['origem']['modelo']}, "
+            f"prompt {guardado['origem']['versao_prompt']}) e carregadas de "
+            f"{CAMINHO_CATEGORIAS_EXEMPLO}, sem nova chamada à API. "
+            "Use o botão Categorizar com IA para categorizar ao vivo."
+        )
     st.dataframe(tabela, width="stretch")
 
 # Contagem de transações por categoria
@@ -252,3 +289,77 @@ if guardado is not None:
             "Não entram no consumo: a fatura repetiria as compras do cartão já listadas; "
             "PIX a pessoas e aplicações não dizem com o que o dinheiro foi gasto."
         )
+
+        # --- Gasto fixo x variável ---
+        st.subheader("Gasto fixo x variável")
+        fixo_variavel = fixo_variavel_mensal(df_cat)
+        if fixo_variavel.empty:
+            st.info("A separação entre gasto fixo e variável precisa de pelo menos 3 meses de extrato.")
+        else:
+            fv_tela = {
+                "Mês": fixo_variavel["mes"].map(rotulo_mes),
+                "Fixo": fixo_variavel["fixo"].map(formatar_reais),
+                "Variável": fixo_variavel["variavel"].map(formatar_reais),
+            }
+            st.dataframe(fv_tela, hide_index=True, width="stretch")
+            with st.expander("Gastos considerados fixos"):
+                fixos = gastos_fixos(df_cat)
+                fixos_tela = {
+                    "Descrição": fixos["descricao"],
+                    "Gasto médio": fixos["gasto_medio"].map(formatar_reais),
+                }
+                st.dataframe(fixos_tela, hide_index=True, width="stretch")
+            st.caption("Fixo = aparece uma vez por mês, em todos os meses, com variação de valor de até 50%.")
+
+        # --- Recomendações (IA) ---
+        st.subheader("Recomendações (IA)")
+        pacote = None
+        try:
+            pacote = montar_pacote(df_cat)
+        except ValueError as e:
+            st.info(str(e))
+
+        # Se o extrato mudou, as recomendações antigas são descartadas (como as categorias)
+        guardadas = st.session_state.get("recomendacoes")
+        if guardadas is not None and guardadas["assinatura"] != assinatura:
+            del st.session_state["recomendacoes"]
+
+        if pacote is not None and st.button("Gerar recomendações com IA"):
+            # Cache simples na sessão: (extrato, modelo, prompt) -> resultado
+            cache_rec = st.session_state.setdefault("cache_recomendacoes", {})
+            chave_rec = (assinatura, MODELO, VERSAO_PROMPT_RECOMENDACOES)
+
+            if chave_rec in cache_rec:
+                st.session_state["recomendacoes"] = {
+                    "assinatura": assinatura,
+                    "resultado": cache_rec[chave_rec],
+                }
+            else:
+                try:
+                    with st.spinner("Gerando recomendações com o Gemini..."):
+                        resultado_rec = gerar_recomendacoes(pacote)
+                    cache_rec[chave_rec] = resultado_rec
+                    st.session_state["recomendacoes"] = {
+                        "assinatura": assinatura,
+                        "resultado": resultado_rec,
+                    }
+                except RuntimeError as e:
+                    st.error(str(e))
+                except Exception as e:
+                    st.error(f"Não foi possível gerar as recomendações ({type(e).__name__}): {e}")
+
+        # Mostra as recomendações guardadas (continuam na tela depois de um Rerun)
+        guardadas = st.session_state.get("recomendacoes")
+        if pacote is not None and guardadas is not None:
+            rec_guardado = guardadas["resultado"]
+            # Dois "$" na mesma linha viram fórmula no Markdown: escapa todos
+            for numero, rec in enumerate(rec_guardado["recomendacoes"], start=1):
+                st.markdown(f"**{numero}. {rec['titulo']}**".replace("$", "\\$"))
+                st.markdown(f"Diagnóstico: {rec['diagnostico']}".replace("$", "\\$"))
+                st.markdown(f"Ação: {rec['acao']}".replace("$", "\\$"))
+            st.caption(
+                "Os números foram calculados pelo pandas. O texto foi escrito pelo Gemini "
+                f"(modelo {rec_guardado['modelo']}, prompt {rec_guardado['versao_prompt']}) "
+                "usando marcadores, e conferido automaticamente: o LLM não escreve nem calcula "
+                "números. Conteúdo educativo, não é recomendação de investimento."
+            )
