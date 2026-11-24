@@ -19,10 +19,17 @@ from analise import (
 )
 from categorizador import MODELO, VERSAO_PROMPT, categorizar_todos
 from extrato import carregar_e_validar
-from recomendador import VERSAO_PROMPT_RECOMENDACOES, gerar_recomendacoes
+from recomendador import (
+    VERSAO_PROMPT_RECOMENDACOES,
+    gerar_recomendacoes,
+    montar_marcadores,
+    preencher_resposta,
+    validar_resposta,
+)
 
 CAMINHO_EXEMPLO = "dados/transacoes.csv"
 CAMINHO_CATEGORIAS_EXEMPLO = "resultados/categorias_v2-regras.csv"
+CAMINHO_RECOMENDACOES_EXEMPLO = f"resultados/recomendacoes_{VERSAO_PROMPT_RECOMENDACOES}.json"
 
 MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 # Eixos no padrão brasileiro: o Altair formata "1,500" e trocamos a vírgula por ponto
@@ -313,6 +320,7 @@ if guardado is not None:
 
         # --- Recomendações (IA) ---
         st.subheader("Recomendações (IA)")
+        area_aviso_rec = st.container()  # aviso das pré-geradas (preenchido depois do botão)
         pacote = None
         try:
             pacote = montar_pacote(df_cat)
@@ -323,6 +331,40 @@ if guardado is not None:
         guardadas = st.session_state.get("recomendacoes")
         if guardadas is not None and guardadas["assinatura"] != assinatura:
             del st.session_state["recomendacoes"]
+        # Pré-geradas só valem enquanto as categorias também forem as pré-calculadas
+        guardadas = st.session_state.get("recomendacoes")
+        if guardadas is not None and "origem" in guardadas and "origem" not in guardado:
+            del st.session_state["recomendacoes"]
+
+        # Exemplo com categorias pré-calculadas e sem recomendações: carrega as já geradas
+        # (sem chamar o Gemini). Qualquer falha aqui só significa "não carregar".
+        if (
+            pacote is not None
+            and fonte == CAMINHO_EXEMPLO
+            and "origem" in guardado
+            and "recomendacoes" not in st.session_state
+            and os.path.exists(CAMINHO_RECOMENDACOES_EXEMPLO)
+        ):
+            try:
+                with open(CAMINHO_RECOMENDACOES_EXEMPLO, encoding="utf-8") as f:
+                    salvo = json.load(f)
+                if salvo["versao_prompt"] == VERSAO_PROMPT_RECOMENDACOES:
+                    marcadores_rec = montar_marcadores(pacote)
+                    validar_resposta(salvo["resposta_bruta"], marcadores_rec)
+                    st.session_state["recomendacoes"] = {
+                        "assinatura": assinatura,
+                        "resultado": {
+                            # Texto preenchido de novo com os números do pacote atual
+                            "recomendacoes": preencher_resposta(
+                                salvo["resposta_bruta"], marcadores_rec
+                            ),
+                            "modelo": salvo["modelo"],
+                            "versao_prompt": salvo["versao_prompt"],
+                        },
+                        "origem": {"arquivo": CAMINHO_RECOMENDACOES_EXEMPLO},
+                    }
+            except Exception:
+                pass
 
         if pacote is not None and st.button("Gerar recomendações com IA"):
             # Cache simples na sessão: (extrato, modelo, prompt) -> resultado
@@ -352,6 +394,15 @@ if guardado is not None:
         guardadas = st.session_state.get("recomendacoes")
         if pacote is not None and guardadas is not None:
             rec_guardado = guardadas["resultado"]
+            if "origem" in guardadas:
+                with area_aviso_rec:
+                    st.info(
+                        f"Recomendações pré-geradas pelo Gemini ({rec_guardado['modelo']}, "
+                        f"prompt {rec_guardado['versao_prompt']}) e salvas em "
+                        f"{guardadas['origem']['arquivo']}, sem nova chamada à API. "
+                        "Os valores foram preenchidos agora a partir dos números calculados "
+                        "pelo pandas. O botão gera novas recomendações ao vivo."
+                    )
             # Dois "$" na mesma linha viram fórmula no Markdown: escapa todos
             for numero, rec in enumerate(rec_guardado["recomendacoes"], start=1):
                 st.markdown(f"**{numero}. {rec['titulo']}**".replace("$", "\\$"))
