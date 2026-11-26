@@ -104,3 +104,11 @@ Bloco 5 concluído (README atualizado em cf51c9d). Cuidados para o bloco 6: (1) 
 - Lista dos erros da IA contra o gabarito, com as causas (a) a (c) e (d) "o gabarito pode estar errado". Se houver mais de 15 erros, a classificação é feita por padrão de erro, e não um a um.
 
 Limitações já conhecidas: o gabarito foi escrito junto com os dados sintéticos, seguindo as mesmas regras, então também tende a ser otimista; e, depois de aberto, ele deixa de servir como teste cego para versões futuras do prompt.
+
+**Avaliação secundária (commit 013880c).** Contra o gabarito, a IA acertou 305 de 307 (99,3%): 53 de 55 nas ambíguas (96,4%) e 252 de 252 nas demais. Nos 50 que rotulei, 49 de 50, como na avaliação principal. Os meus rótulos concordaram com o gabarito em 50 de 50.
+
+Os dois erros são causa (c), regras planejadas que não entraram no prompt: T036 (SMARTFIT ACADEMIA: gabarito Saúde, IA Lazer e assinaturas) e T064 (LIVRARIA CULTURA: gabarito Educação, IA Compras e serviços). As duas são convenções; a própria nota do gabarito diz "decisão de regra". Já os casos das outras regras planejadas, que também não estão no prompt (Amazon com e sem Prime, conveniência de posto, marketplace com "MERCADO", loja de apps, pet shop, maquininha com nome de pessoa, livro digital recorrente), a IA acertou sem a regra escrita. Lição: regra intuitiva o modelo deduz; convenção precisa estar escrita no prompt.
+
+Leitura crítica: os 99,3% medem se a IA segue as minhas regras, não se ela acerta um extrato real. O gabarito, o prompt e os meus rótulos seguem as mesmas regras, e as notas das ambíguas correspondem, quase todas, a regras que estão no prompt. Os 50 de 50 entre mim e o gabarito confirmam isso; não são uma validação independente.
+
+Decisão: não criar um prompt v3 com as regras de academia e livro. Ele exigiria categorizar tudo de novo e gerar as recomendações de novo, e o gabarito já não é um teste cego. Fica nos próximos passos. Próximo: README do bloco 6.
