@@ -17,7 +17,14 @@ from analise import (
     montar_pacote,
     resumo,
 )
-from categorizador import MODELO, VERSAO_PROMPT, categorizar_todos, explicar_erro
+from categorizador import (
+    LIMITE_DIARIO_APP,
+    MODELO,
+    VERSAO_PROMPT,
+    categorizar_todos,
+    explicar_erro,
+    pedidos_restantes,
+)
 from extrato import carregar_e_validar
 from recomendador import (
     VERSAO_PROMPT_RECOMENDACOES,
@@ -30,6 +37,8 @@ from recomendador import (
 CAMINHO_EXEMPLO = "dados/transacoes.csv"
 CAMINHO_CATEGORIAS_EXEMPLO = "resultados/categorias_v2-regras.csv"
 CAMINHO_RECOMENDACOES_EXEMPLO = f"resultados/recomendacoes_{VERSAO_PROMPT_RECOMENDACOES}.json"
+
+LIMITE_TRANSACOES_UPLOAD = 400  # limite da demonstração, para proteger a cota
 
 MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 # Eixos no padrão brasileiro: o Altair formata "1,500" e trocamos a vírgula por ponto
@@ -56,13 +65,78 @@ def mostrar_erro_gemini(erro):
         st.text(f"{type(erro).__name__}: {erro}")
 
 
+def mostrar_restantes(area):
+    """Texto pequeno com o saldo de pedidos do dia (compartilhado entre visitantes)."""
+    area.caption(
+        f"Pedidos ao Gemini restantes hoje nesta demonstração: "
+        f"{pedidos_restantes()} de {LIMITE_DIARIO_APP}."
+    )
+
+
+def marcar_execucao(acao):
+    """on_click dos botões de IA: marca na sessão o que vai rodar."""
+    if not st.session_state.get("rodando"):
+        st.session_state["rodando"] = acao
+
+
+def parar():
+    """st.stop() sem deixar nenhuma chamada marcada (senão os botões ficariam presos)."""
+    st.session_state["rodando"] = None
+    st.stop()
+
+
+def mostrar_erro_guardado(acao):
+    """Mostra, uma vez, o erro da última chamada dessa ação."""
+    guardado = st.session_state.get("erro_ia")
+    if guardado is not None and guardado[0] == acao:
+        del st.session_state["erro_ia"]
+        mostrar_erro_gemini(guardado[1])
+
+
+def categorizar_agora(transacoes, assinatura, area, areas_saldo):
+    # Cache simples na sessão: (extrato, modelo, prompt) -> resultado. Não usa @st.cache_data
+    # porque a barra de progresso é um elemento de tela e não pode ser reencenada pelo cache.
+    cache = st.session_state.setdefault("cache_categorias", {})
+    chave = (assinatura, MODELO, VERSAO_PROMPT)
+
+    # Mesmo extrato, modelo e prompt: reaproveita, sem Gemini e sem barra
+    if chave not in cache:
+        barra = area.progress(0, text="Enviando ao Gemini...")
+
+        def atualizar_barra(atual, total):
+            barra.progress(atual / total, text=f"Lote {atual} de {total}")
+            for area_saldo in areas_saldo:
+                mostrar_restantes(area_saldo)
+
+        cache[chave] = categorizar_todos(transacoes, progresso=atualizar_barra)
+    st.session_state["categorias"] = {"assinatura": assinatura, "resultado": cache[chave]}
+
+
+def recomendar_agora(pacote, chave_pacote, assinatura, area):
+    # Cache simples na sessão: (pacote, modelo, prompt) -> resultado. Com o mesmo pacote,
+    # mostra as recomendações que já existem, sem chamar o Gemini.
+    cache = st.session_state.setdefault("cache_recomendacoes", {})
+    chave = (chave_pacote, MODELO, VERSAO_PROMPT_RECOMENDACOES)
+    if chave not in cache:
+        with area, st.spinner("Gerando recomendações com o Gemini..."):
+            cache[chave] = gerar_recomendacoes(pacote)
+    st.session_state["recomendacoes"] = {
+        "assinatura": assinatura,
+        "pacote": chave_pacote,
+        "resultado": cache[chave],
+    }
+
+
 st.title("Analisador de extrato financeiro")
 st.warning("Use apenas dados fictícios.")
 
-arquivo = st.file_uploader("Envie um extrato em CSV", type="csv")
+# True enquanto há uma chamada ao Gemini marcada: desativa os controles da tela
+ocupado = st.session_state.get("rodando") is not None
+
+arquivo = st.file_uploader("Envie um extrato em CSV", type="csv", disabled=ocupado)
 
 # Guarda no session_state que o usuário pediu o exemplo (o Streamlit reroda o script a cada clique)
-if st.button("Usar dados de exemplo"):
+if st.button("Usar dados de exemplo", disabled=ocupado):
     st.session_state["usar_exemplo"] = True
 if arquivo is not None:
     st.session_state["usar_exemplo"] = False  # um upload novo vale mais que o exemplo
@@ -73,7 +147,7 @@ elif st.session_state.get("usar_exemplo"):
     fonte = CAMINHO_EXEMPLO
 else:
     st.info("Envie um CSV (colunas: id, data, descricao, valor) ou use os dados de exemplo.")
-    st.stop()
+    parar()
 
 df, erros = carregar_e_validar(fonte)
 
@@ -81,7 +155,15 @@ df, erros = carregar_e_validar(fonte)
 if erros:
     for erro in erros:
         st.error(erro)
-    st.stop()
+    parar()
+
+if arquivo is not None and len(df) > LIMITE_TRANSACOES_UPLOAD:
+    st.error(
+        f"Este extrato tem {len(df)} transações, e o limite desta demonstração é de "
+        f"{LIMITE_TRANSACOES_UPLOAD}. Envie um arquivo menor, ou remova o arquivo e use "
+        '"Usar dados de exemplo".'
+    )
+    parar()
 
 # Resumo
 entradas = df.loc[df["valor"] > 0, "valor"].sum()
@@ -140,29 +222,17 @@ if fonte == CAMINHO_EXEMPLO and "categorias" not in st.session_state:
                 "use o botão Categorizar com IA."
             )
 
-if st.button("Categorizar com IA"):
-    # Cache simples na sessão: (extrato, modelo, prompt) -> resultado. Não usa @st.cache_data
-    # porque a barra de progresso é um elemento de tela e não pode ser reencenada pelo cache.
-    cache = st.session_state.setdefault("cache_categorias", {})
-    chave = (assinatura, MODELO, VERSAO_PROMPT)
+st.button(
+    "Categorizar com IA", on_click=marcar_execucao, args=("categorizar",), disabled=ocupado
+)
+# Espaços para o saldo de pedidos (atualizados durante a categorização)
+areas_restantes = [st.empty()]
+mostrar_restantes(areas_restantes[0])
+area_categorizar = st.empty()  # barra de progresso
+mostrar_erro_guardado("categorizar")
 
-    if chave in cache:
-        # Mesmo extrato, modelo e prompt: reaproveita, sem Gemini e sem barra
-        st.session_state["categorias"] = {"assinatura": assinatura, "resultado": cache[chave]}
-    else:
-        barra = st.progress(0, text="Enviando ao Gemini...")
-
-        def atualizar_barra(atual, total):
-            barra.progress(atual / total, text=f"Lote {atual} de {total}")
-
-        try:
-            resultado = categorizar_todos(transacoes, progresso=atualizar_barra)
-            cache[chave] = resultado
-            st.session_state["categorias"] = {"assinatura": assinatura, "resultado": resultado}
-        except Exception as e:
-            mostrar_erro_gemini(e)
-        finally:
-            barra.empty()
+# Preenchidos mais abaixo, quando houver pacote para as recomendações
+pacote = chave_pacote = area_recomendar = None
 
 # Tabela (com a coluna "categoria" quando já houver resultado)
 tabela = df.copy()
@@ -325,15 +395,19 @@ if guardado is not None:
         # --- Recomendações (IA) ---
         st.subheader("Recomendações (IA)")
         area_aviso_rec = st.container()  # aviso das pré-geradas (preenchido depois do botão)
-        pacote = None
         try:
             pacote = montar_pacote(df_cat)
+            chave_pacote = hashlib.sha256(
+                json.dumps(pacote, ensure_ascii=False, sort_keys=True).encode("utf-8")
+            ).hexdigest()
         except ValueError as e:
             st.info(str(e))
 
-        # Se o extrato mudou, as recomendações antigas são descartadas (como as categorias)
+        # Se o extrato ou o pacote mudou, as recomendações antigas são descartadas
         guardadas = st.session_state.get("recomendacoes")
-        if guardadas is not None and guardadas["assinatura"] != assinatura:
+        if guardadas is not None and (
+            guardadas["assinatura"] != assinatura or guardadas.get("pacote") != chave_pacote
+        ):
             del st.session_state["recomendacoes"]
         # Pré-geradas só valem enquanto as categorias também forem as pré-calculadas
         guardadas = st.session_state.get("recomendacoes")
@@ -357,6 +431,7 @@ if guardado is not None:
                     validar_resposta(salvo["resposta_bruta"], marcadores_rec)
                     st.session_state["recomendacoes"] = {
                         "assinatura": assinatura,
+                        "pacote": chave_pacote,
                         "resultado": {
                             # Texto preenchido de novo com os números do pacote atual
                             "recomendacoes": preencher_resposta(
@@ -370,27 +445,17 @@ if guardado is not None:
             except Exception:
                 pass
 
-        if pacote is not None and st.button("Gerar recomendações com IA"):
-            # Cache simples na sessão: (extrato, modelo, prompt) -> resultado
-            cache_rec = st.session_state.setdefault("cache_recomendacoes", {})
-            chave_rec = (assinatura, MODELO, VERSAO_PROMPT_RECOMENDACOES)
-
-            if chave_rec in cache_rec:
-                st.session_state["recomendacoes"] = {
-                    "assinatura": assinatura,
-                    "resultado": cache_rec[chave_rec],
-                }
-            else:
-                try:
-                    with st.spinner("Gerando recomendações com o Gemini..."):
-                        resultado_rec = gerar_recomendacoes(pacote)
-                    cache_rec[chave_rec] = resultado_rec
-                    st.session_state["recomendacoes"] = {
-                        "assinatura": assinatura,
-                        "resultado": resultado_rec,
-                    }
-                except Exception as e:
-                    mostrar_erro_gemini(e)
+        if pacote is not None:
+            st.button(
+                "Gerar recomendações com IA",
+                on_click=marcar_execucao,
+                args=("recomendar",),
+                disabled=ocupado,
+            )
+            areas_restantes.append(st.empty())
+            mostrar_restantes(areas_restantes[-1])
+            area_recomendar = st.empty()  # aviso de "gerando"
+            mostrar_erro_guardado("recomendar")
 
         # Mostra as recomendações guardadas (continuam na tela depois de um Rerun)
         guardadas = st.session_state.get("recomendacoes")
@@ -416,3 +481,18 @@ if guardado is not None:
                 "usando marcadores, e conferido automaticamente: o LLM não escreve nem calcula "
                 "números. Conteúdo educativo, não é recomendação de investimento."
             )
+
+# --- Chamada ao Gemini marcada por um botão ---
+# Roda só aqui, no fim, quando todos os controles já foram desenhados desativados.
+acao = st.session_state.get("rodando")
+if acao is not None:
+    try:
+        if acao == "categorizar":
+            categorizar_agora(transacoes, assinatura, area_categorizar, areas_restantes)
+        elif acao == "recomendar" and pacote is not None:
+            recomendar_agora(pacote, chave_pacote, assinatura, area_recomendar)
+    except Exception as e:
+        st.session_state["erro_ia"] = (acao, e)
+    finally:
+        st.session_state["rodando"] = None  # com sucesso, erro ou interrupção
+    st.rerun()  # redesenha com os botões ativos e com o resultado

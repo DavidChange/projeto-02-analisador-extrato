@@ -1,6 +1,9 @@
 import json
+import threading
 import time
+from datetime import datetime, timezone
 from functools import lru_cache
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from google import genai
@@ -15,6 +18,14 @@ VERSAO_PROMPT = "v2-regras"  # para comparar versões do prompt depois
 PAUSA_ENTRE_LOTES = 4  # segundos (limite do plano gratuito)
 ESPERAS_TENTATIVAS = [5, 15, 30]  # segundos de espera antes de cada nova tentativa
 CODIGOS_TEMPORARIOS = {408, 429, 500, 502, 503, 504}
+
+# Limite de pedidos por dia feitos pelo app, para proteger a cota do app público
+LIMITE_DIARIO_APP = 15
+FUSO_DA_COTA = ZoneInfo("America/Los_Angeles")  # a cota do Google renova à meia-noite de lá
+FRASE_LIMITE_APP = (
+    "O limite diário de demonstração foi atingido. Ele volta por volta das 5h "
+    '(horário de Brasília). Enquanto isso, use "Usar dados de exemplo".'
+)
 
 
 class ErroValidacao(ValueError):
@@ -35,6 +46,50 @@ class ErroGemini(RuntimeError):
     def __init__(self, mensagem, *erros):
         super().__init__(mensagem)
         self.erros = erros
+
+
+class ErroLimiteApp(RuntimeError):
+    """O limite diário do app não permite o pedido; nada é enviado à API."""
+
+    def __init__(self, mensagem=FRASE_LIMITE_APP):
+        super().__init__(mensagem)
+
+
+# Contador em variável do módulo: é o mesmo para todos os visitantes do app
+_trava_contador = threading.Lock()
+_dia_contado = None
+_pedidos_feitos = 0
+
+
+def _agora():
+    """Data e hora atuais (função separada para os testes trocarem o relógio)."""
+    return datetime.now(timezone.utc)
+
+
+def _zerar_se_virou_o_dia():
+    """Zera o contador quando muda a data no fuso da cota. Chamar com a trava fechada."""
+    global _dia_contado, _pedidos_feitos
+    hoje = _agora().astimezone(FUSO_DA_COTA).date()
+    if hoje != _dia_contado:
+        _dia_contado = hoje
+        _pedidos_feitos = 0
+
+
+def pedidos_restantes():
+    """Quantos pedidos ao Gemini o app ainda pode fazer hoje."""
+    with _trava_contador:
+        _zerar_se_virou_o_dia()
+        return max(0, LIMITE_DIARIO_APP - _pedidos_feitos)
+
+
+def registrar_pedido():
+    """Conta 1 pedido antes de chamar a API; levanta ErroLimiteApp se não houver saldo."""
+    global _pedidos_feitos
+    with _trava_contador:
+        _zerar_se_virou_o_dia()
+        if _pedidos_feitos >= LIMITE_DIARIO_APP:
+            raise ErroLimiteApp()
+        _pedidos_feitos += 1
 
 
 CATEGORIAS = [
@@ -134,7 +189,9 @@ def categorizar_lote(transacoes, modelo=MODELO):
         for t in transacoes
     ]
 
-    resposta = _obter_client().models.generate_content(
+    cliente = _obter_client()  # sem chave, falha aqui e não conta pedido
+    registrar_pedido()
+    resposta = cliente.models.generate_content(
         model=modelo,
         contents=_montar_prompt(entrada),
         config=types.GenerateContentConfig(
@@ -211,6 +268,8 @@ def _erro_temporario(erro):
 
 def _frase_do_erro(erro):
     """Frase curta em português para um erro só, sem o texto bruto da API."""
+    if isinstance(erro, ErroLimiteApp):
+        return str(erro)  # a mensagem já é nossa, em português
     if _cota_diaria(erro):
         return (
             "A cota diária gratuita do Gemini acabou e se renova por volta das 5h "
@@ -310,8 +369,16 @@ def categorizar_todos(transacoes, tamanho_lote=40, estatisticas=None, progresso=
 
     estatisticas: dict opcional, preenchido com 'lotes' e 'tentativas_extras'.
     progresso: função opcional chamada como progresso(lote_atual, total_de_lotes).
+    Se houver mais lotes que pedidos restantes hoje, levanta ErroLimiteApp sem chamar a API.
     """
     lotes = [transacoes[i : i + tamanho_lote] for i in range(0, len(transacoes), tamanho_lote)]
+    restantes = pedidos_restantes()
+    if len(lotes) > restantes:
+        raise ErroLimiteApp(
+            f"Esta categorização precisa de pelo menos {len(lotes)} pedidos ao Gemini, e o "
+            f"limite diário de demonstração só tem {restantes} restantes. Ele volta por volta "
+            'das 5h (horário de Brasília). Enquanto isso, use "Usar dados de exemplo".'
+        )
     resultados = []
     tentativas_extras = 0
 

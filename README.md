@@ -117,3 +117,5 @@ A categorização foi avaliada sem nova chamada ao Gemini, comparando as categor
 14. Parte da qualidade das recomendações vem de regras escritas pelo autor no prompt (ex.: atribuir a queda da sobra à renda extra quando for o caso), e cada versão do prompt foi avaliada em uma rodada só.
 15. Com temperature 0, a mesma descrição pode receber categorias diferentes em lotes diferentes (caso da academia). O app não confere a consistência entre lotes.
 16. Depois de usado na avaliação, o gabarito deixou de ser um teste cego: uma versão futura do prompt (ex.: com as regras de academia e livro) precisaria de rótulos novos para ser avaliada.
+17. Proteção da cota na demonstração: no máximo 15 pedidos ao Gemini por dia, somando todos os visitantes, e uploads de até 400 transações. O contador fica na memória do app e volta a zero se o app reiniciar; nesse caso, vale só o limite do próprio Google.
+18. Se a execução for parada pelo "Stop" do Streamlit, os botões de IA podem ficar desativados até a página ser recarregada.

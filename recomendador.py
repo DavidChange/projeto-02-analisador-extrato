@@ -20,6 +20,7 @@ from categorizador import (
     _cota_diaria,
     _erro_temporario,
     _obter_client,
+    registrar_pedido,
 )
 
 CAMPOS = ["renda", "renda_fixa", "renda_extra", "consumo", "fixo", "variavel", "sobra"]
@@ -248,7 +249,9 @@ def montar_prompt(pacote, marcadores):
 
 def _chamar_gemini(prompt, modelo):
     """Chamada real à API; devolve o texto da resposta."""
-    resposta = _obter_client().models.generate_content(
+    cliente = _obter_client()  # sem chave, falha aqui e não conta pedido
+    registrar_pedido()
+    resposta = cliente.models.generate_content(
         model=modelo,
         contents=prompt,
         config=types.GenerateContentConfig(
