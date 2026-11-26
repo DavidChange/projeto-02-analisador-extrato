@@ -1,0 +1,51 @@
+id,descricao,categoria_david,categoria_ia,acertou
+T001,CLINICA SAUDE VIVA CONSULTA,Saúde,Saúde,True
+T002,CLARO MOVEL RECARGA,Moradia e contas,Moradia e contas,True
+T003,COMPRA NO DEBITO - BILHETE UNICO RECARGA 0602,Transporte,Transporte,True
+T004,COMPRA NO DEBITO - UBER *TRIP,Transporte,Transporte,True
+T005,COMPRA NO DEBITO - ACOUGUE BOI FORTE,Mercado,Mercado,True
+T006,COMPRA NO DEBITO - IFOOD *RESTAURANTE,Alimentação fora,Alimentação fora,True
+T007,IFOOD *MERCADO BOM PRECO,Mercado,Mercado,True
+T008,COMPRA NO DEBITO - POSTO IPIRANGA 0068,Transporte,Transporte,True
+T009,COMPRA CARTAO BOLICHE CENTRAL,Lazer e assinaturas,Lazer e assinaturas,True
+T010,COMPRA NO DEBITO - ACOUGUE BOI FORTE,Mercado,Mercado,True
+T011,COMPRA NO DEBITO - 99 *CORRIDA 0463,Transporte,Transporte,True
+T012,CARREFOUR EXPRESS,Mercado,Mercado,True
+T013,COMPRA NO DEBITO - CLINICA SAUDE VIVA CONSULTA,Saúde,Saúde,True
+T014,CREDITO SALARIO EMPRESA ALFA LTDA,Renda,Renda,True
+T015,LANCHES DO BAIRRO 0229,Alimentação fora,Alimentação fora,True
+T016,DROGASIL 1234,Saúde,Saúde,True
+T017,COMPRA NO DEBITO - RESTAURANTE SABOR CASEIRO 0166,Alimentação fora,Alimentação fora,True
+T018,BILHETE UNICO RECARGA,Transporte,Transporte,True
+T019,APLICACAO RDB,Investimentos,Investimentos,True
+T020,SUPERMERCADOS PAGUE MENOS,Mercado,Mercado,True
+T021,COMPRA NO DEBITO - BILHETE UNICO RECARGA,Transporte,Transporte,True
+T022,ACOUGUE BOI FORTE,Mercado,Mercado,True
+T023,COMPRA CARTAO LABORATORIO CENTRAL EXAMES,Saúde,Saúde,True
+T024,BOLETO MENSALIDADE FACULDADE,Educação,Educação,True
+T025,COMPRA NO DEBITO - HORTIFRUTI VERDE VIVO,Mercado,Mercado,True
+T026,PAG*JoseSilva,Compras e serviços,Compras e serviços,True
+T027,COMPRA NO DEBITO - LOJAS AMERICANAS 0085,Compras e serviços,Compras e serviços,True
+T028,ESTORNO UBER *TRIP,Transporte,Transporte,True
+T029,COMPRA CARTAO CAFE CENTRAL,Alimentação fora,Alimentação fora,True
+T030,DEBITO AUTOMATICO CLARO MOVEL,Moradia e contas,Moradia e contas,True
+T031,COMPRA CARTAO MERCADO DIA,Mercado,Mercado,True
+T032,ESTORNO COMPRA SHOPEE,Compras e serviços,Compras e serviços,True
+T033,COMPRA NO DEBITO - SUSHI HOUSE,Alimentação fora,Alimentação fora,True
+T034,COMPRA CARTAO POSTO IPIRANGA,Transporte,Transporte,True
+T035,IFOOD *HORTIFRUTI DO ZE,Mercado,Mercado,True
+T036,SMARTFIT ACADEMIA,Saúde,Lazer e assinaturas,False
+T037,PIX ENVIADO IMOB CENTRAL - ALUGUEL,Moradia e contas,Moradia e contas,True
+T038,BOLETO CONDOMINIO RES JARDINS,Moradia e contas,Moradia e contas,True
+T039,SHELL SELECT CONVENIENCIA,Alimentação fora,Alimentação fora,True
+T040,BILHETE UNICO RECARGA,Transporte,Transporte,True
+T041,ATACADAO 0090,Mercado,Mercado,True
+T042,COMPRA NO DEBITO - LAVANDERIA EXPRESS 0693,Compras e serviços,Compras e serviços,True
+T043,COMPRA CARTAO CHURRASCARIA GAUCHA 0797,Alimentação fora,Alimentação fora,True
+T044,COMPRA NO DEBITO - UBER *TRIP,Transporte,Transporte,True
+T045,DEBITO AUTOMATICO VIVO FIBRA,Moradia e contas,Moradia e contas,True
+T046,COMPRA NO DEBITO - CARREFOUR EXPRESS,Mercado,Mercado,True
+T047,COMPRA NO DEBITO - CAFE CENTRAL,Alimentação fora,Alimentação fora,True
+T048,COMPRA NO DEBITO - UBER *TRIP,Transporte,Transporte,True
+T049,COMPRA NO DEBITO - CHURRASCARIA GAUCHA,Alimentação fora,Alimentação fora,True
+T050,PIX ENVIADO FERNANDA COSTA,Transferências,Transferências,True
