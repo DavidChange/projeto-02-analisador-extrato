@@ -4,7 +4,7 @@ App em Streamlit que categoriza um extrato bancário com IA (Gemini) e mostra pa
 
 Modelo: gemini-3.5-flash (reserva: gemini-3.5-flash-lite). Prompts: v2-regras (categorização) e r2 (recomendações).
 
-> README em construção: blocos 1 a 5 concluídos. Faltam a avaliação (bloco 6) e a publicação com GIF (bloco 7).
+> README em construção: blocos 1 a 6 concluídos. Falta a publicação com GIF (bloco 7).
 
 ## Dados
 
@@ -82,15 +82,32 @@ O LLM gera 3 recomendações a partir de números agregados pelo pandas. Ele nun
 
 **Dados de exemplo sem chamar a API.** O botão "Usar dados de exemplo" carrega as categorias (`resultados/categorias_v2-regras.csv`) e as recomendações (`resultados/recomendacoes_r2.json`) que o Gemini já gerou, com um aviso na tela. As recomendações salvas passam pela conferência e têm os valores preenchidos na hora, a partir do pacote. Os botões continuam gerando tudo ao vivo. Motivo: no nível gratuito, o Gemini permite 20 pedidos por dia por modelo, e em 23 e 24/11 as quatro tentativas ao vivo no app falharam (sobrecarga do servidor e cota esgotada).
 
+## Avaliação da categorização (bloco 6)
+
+A categorização foi avaliada sem nova chamada ao Gemini, comparando as categorias já geradas (`resultados/categorias_v2-regras.csv`) com duas referências, em `avaliar_categorizacao.py`. As métricas foram registradas no DEVLOG antes de cada comparação.
+
+| Referência | Acertos da IA |
+|---|---|
+| 50 rótulos manuais do autor (T001 a T050) | 49 de 50 (98,0%) |
+| Os mesmos 50, sem T001 a T005 e T009 | 43 de 44 (97,7%) |
+| Gabarito, 307 transações | 305 de 307 (99,3%) |
+| Gabarito, só as 55 ambíguas de propósito | 53 de 55 (96,4%) |
+
+**Os dois erros** são regras planejadas que não entraram no prompt, e as duas são convenções: academia (o gabarito diz Saúde; a IA deu Lazer e assinaturas) e livraria (Educação; a IA deu Compras e serviços). As outras regras planejadas, também fora do prompt (Amazon Prime, conveniência de posto, marketplace com "MERCADO", loja de apps, pet shop), a IA acertou sozinha. Conclusão: regra intuitiva o modelo deduz; convenção precisa estar escrita no prompt.
+
+**Inconsistência:** as três cobranças da academia, com a mesma descrição, receberam Lazer e assinaturas em agosto e Saúde em setembro e outubro, mesmo com temperature 0.
+
+**Como ler esses números:** eles medem se a IA segue as regras do autor, não o acerto num extrato real. Os rótulos manuais, o gabarito e o prompt seguem as mesmas regras (os rótulos concordaram com o gabarito em 50 de 50), os dados são sintéticos e os 50 rótulos são as primeiras transações de agosto, quase todas fáceis. Num extrato real, a acurácia tende a ser menor.
+
 ## Limitações conhecidas
 
 1. O estorno é classificado só pela descrição; o app não procura a compra original, que pode estar em outro lote.
-2. As regras foram definidas pelo mesmo autor que vai rotular a avaliação, então a acurácia medida tende a ser otimista.
+2. As regras, os rótulos manuais e o gabarito foram definidos pelo mesmo autor e seguem as mesmas regras do prompt, então as acurácias medidas (98% e 99,3%) são otimistas: medem se a IA segue as regras, não o acerto num extrato real.
 3. Dados sintéticos são mais limpos que um extrato real.
 4. O app depende da disponibilidade da API do Gemini. Em 23 e 24/11, as quatro tentativas ao vivo no app falharam (503 por sobrecarga e 429 por cota diária). O app mostrou o erro sem exibir resultado pela metade, mas o modelo reserva também falhou em todas as vezes, o 429 de cota diária é tratado como erro temporário (o app espera e tenta de novo à toa) e a mensagem de erro mostra o texto bruto da API, em inglês.
 5. O cache da categorização dura só enquanto a aba do navegador estiver aberta.
-6. A avaliação usa as 50 primeiras transações (agosto), não uma amostra aleatória.
-7. Os totais dependem da categorização da IA, que ainda não foi avaliada (bloco 6). Uma transação na categoria errada muda o gasto por categoria.
+6. Os 50 rótulos manuais são as 50 primeiras transações (agosto), não uma amostra aleatória, e quase todas são fáceis; os casos difíceis só foram medidos contra o gabarito.
+7. Os totais dependem da categorização da IA. Uma transação na categoria errada muda o gasto por categoria (ex.: a academia aparece em Lazer em agosto e em Saúde nos outros meses).
 8. PIX enviados a pessoas ficam fora do consumo, mesmo quando pagam algo que seria gasto (ex.: dividir uma conta). Isso pode subestimar o consumo.
 9. As maiores despesas são quase só contas fixas (aluguel, faculdade, condomínio). Desde o bloco 5, o app separa gasto fixo de variável, mas a tabela de maiores despesas continua misturando os dois.
 10. A categorização é tudo ou nada: se um lote falha, os lotes já prontos são descartados.
@@ -98,3 +115,5 @@ O LLM gera 3 recomendações a partir de números agregados pelo pandas. Ele nun
 12. A conferência garante que os números vêm do pandas, mas não avalia a qualidade das recomendações nem pega um texto que contradiga a direção (ex.: "subiu" antes de uma queda).
 13. A regra de nenhum dígito obriga o LLM a escrever números por extenso ("três meses"), e a palavra "reais" é recusada até como adjetivo ("riscos reais"). Valores escritos por extenso sem as expressões proibidas ("mil e oitocentos") passariam.
 14. Parte da qualidade das recomendações vem de regras escritas pelo autor no prompt (ex.: atribuir a queda da sobra à renda extra quando for o caso), e cada versão do prompt foi avaliada em uma rodada só.
+15. Com temperature 0, a mesma descrição pode receber categorias diferentes em lotes diferentes (caso da academia). O app não confere a consistência entre lotes.
+16. Depois de usado na avaliação, o gabarito deixou de ser um teste cego: uma versão futura do prompt (ex.: com as regras de academia e livro) precisaria de rótulos novos para ser avaliada.
