@@ -93,3 +93,14 @@ Bloco 5 concluído (README atualizado em cf51c9d). Cuidados para o bloco 6: (1) 
 - **Descartados:** porcentagem de acerto por categoria e matriz de confusão, porque 7 das 13 categorias têm 1 caso ou nenhum nos meus rótulos; e a métrica de acerto nos casos de baixa confiança, porque só 1 dos 50 rótulos tem confiança preenchida.
 - **Modelo reserva:** a comparação com o gemini-3.5-flash-lite fica opcional, só nos 50 e gravada em arquivo com outro nome; ele respondeu 503 em todas as chamadas desde 23/11.
 - **429 de cota diária:** a correção passa para o bloco 7, junto com os outros erros do app público, porque a avaliação não chama a API. Isso substitui o cuidado (3) registrado no fechamento do bloco 5.
+
+**Primeira rodada (commit 35104da).** A IA acertou 49 dos meus 50 rótulos (98,0%); no recorte sem T001 a T005 e sem T009, 43 de 44 (97,7%). O único erro é T036 (SMARTFIT ACADEMIA): eu rotulei Saúde e a IA deu Lazer e assinaturas. Causa (c): a regra "Academia = Saúde" está entre as regras planejadas do README, mas não entrou no prompt. As três transações da academia (T036, T134 e T237, uma por mês) receberam Lazer e assinaturas em agosto e Saúde em setembro e outubro: com temperature 0, a mesma descrição teve categorias diferentes em lotes diferentes. Ressalva: os 50 são as primeiras transações de agosto, quase todas fáceis, e as regras e os rótulos são meus; os 98% não dizem quanto a IA acerta nos casos difíceis.
+
+**Decisão: avaliação secundária com o gabarito (registrada antes de abri-lo).** Como os 50 rótulos não medem os casos difíceis, o `dados/gabarito.csv`, fechado desde o bloco 1, passa a ser usado como avaliação secundária, sem nova chamada ao Gemini. Ele só será lido pelo script de avaliação. Métricas:
+- Acertos da IA contra o gabarito nas 307 transações ("X de 307" e porcentagem).
+- Os mesmos acertos separados entre as transações que o gabarito marca como ambíguas e as demais.
+- Acertos da IA contra o gabarito nos mesmos 50 que eu rotulei, para comparar com os 49 de 50.
+- Concordância entre os meus rótulos e o gabarito nos 50 em comum, com a lista das divergências. Divergências não mudam os meus rótulos nem a métrica principal.
+- Lista dos erros da IA contra o gabarito, com as causas (a) a (c) e (d) "o gabarito pode estar errado". Se houver mais de 15 erros, a classificação é feita por padrão de erro, e não um a um.
+
+Limitações já conhecidas: o gabarito foi escrito junto com os dados sintéticos, seguindo as mesmas regras, então também tende a ser otimista; e, depois de aberto, ele deixa de servir como teste cego para versões futuras do prompt.

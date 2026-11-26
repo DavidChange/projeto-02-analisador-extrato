@@ -27,7 +27,7 @@ O autor é iniciante em programação e novo no macOS. Explique os comandos do T
 
 ## Regras que nunca mudam
 
-1. NUNCA abra, leia, imprima ou resuma dados/gabarito.csv, nem com cat, head, grep, pandas ou qualquer outro meio. Ele só será usado pelo autor, na avaliação final.
+1. NUNCA altere dados/gabarito.csv. Desde o bloco 6 (decisão de 26/11 no DEVLOG), ele só pode ser lido pelo avaliar_categorizacao.py, na avaliação secundária. Não o abra, leia, imprima ou resuma por outros meios (cat, head, grep, ferramenta de leitura), exceto a primeira linha (o cabeçalho), quando o autor pedir.
 2. O LLM só categoriza e redige texto. Todo número é calculado com pandas, em analise.py.
 3. Só dados fictícios. Nenhuma chave de API ou e-mail pessoal em código, prints ou commits. A chave fica só no .env, que está no .gitignore. Nunca mostre o conteúdo do .env.
 4. NÃO faça commit até o autor dizer "ok". NÃO faça push até ele dizer "push".
