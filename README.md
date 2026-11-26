@@ -4,7 +4,9 @@ App em Streamlit que categoriza um extrato bancário com IA (Gemini) e mostra pa
 
 Modelo: gemini-3.5-flash (reserva: gemini-3.5-flash-lite). Prompts: v2-regras (categorização) e r2 (recomendações).
 
-> README em construção: blocos 1 a 6 concluídos. Falta a publicação com GIF (bloco 7).
+**App online:** https://extrato-com-ia-david.streamlit.app/ (dados fictícios; limite de 15 pedidos de IA por dia para todos os visitantes).
+
+> README em construção: blocos 1 a 6 concluídos e app publicado. Faltam o ajuste visual, o teste ao vivo no site, o GIF e o README final (bloco 7).
 
 ## Dados
 
