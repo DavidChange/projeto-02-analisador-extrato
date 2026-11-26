@@ -1,5 +1,7 @@
 """Testes do tratamento de erros do Gemini e do limite diário. Só falsos; não chama a API."""
 
+import json
+import re
 import threading
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -337,3 +339,71 @@ for thread in threads:
     thread.join()
 assert len(aceitos) == LIMITE and pedidos_restantes() == 0
 print("OK: com 100 pedidos simultâneos, só 15 passam")
+
+# --- Lotes guardados: uma falha no meio não perde o que já ficou pronto ---
+
+
+class ClienteDeLotes:
+    """Devolve os ids pedidos; falha (sem ser temporário) no lote que tiver `falhar_em`."""
+
+    def __init__(self, falhar_em=None):
+        self.falhar_em = falhar_em
+        self.lotes_chamados = []
+        self.models = self
+
+    def generate_content(self, model, contents, config):
+        ids = re.findall(r'"id": "([^"]+)"', contents)
+        self.lotes_chamados.append(ids)
+        if self.falhar_em in ids:
+            raise ErroFalso(401, "UNAUTHENTICATED")
+        return SimpleNamespace(text=json.dumps([{"id": i, "categoria": "Outros"} for i in ids]))
+
+
+def usar_cliente(cliente):
+    categorizador._obter_client = lambda: cliente
+    return cliente
+
+
+QUATRO = [{"id": f"L{i}", "descricao": "TESTE", "valor": -1.0} for i in (1, 2, 3, 4)]
+preparar()
+prontos, progresso = {}, []
+cliente = usar_cliente(ClienteDeLotes(falhar_em="L3"))
+capturar(lambda: categorizador.categorizar_todos(QUATRO, tamanho_lote=1, lotes_prontos=prontos))
+assert cliente.lotes_chamados == [["L1"], ["L2"], ["L3"]] and len(prontos) == 2
+print("OK: falha no lote 3 guarda os 2 lotes prontos")
+
+cliente = usar_cliente(ClienteDeLotes())
+resultado = categorizador.categorizar_todos(
+    QUATRO, tamanho_lote=1, lotes_prontos=prontos,
+    progresso=lambda feitos, total: progresso.append((feitos, total)),
+)
+assert cliente.lotes_chamados == [["L3"], ["L4"]], cliente.lotes_chamados
+assert [r["id"] for r in resultado] == ["L1", "L2", "L3", "L4"]
+assert progresso == [(3, 4), (4, 4)], progresso
+print("OK: novo clique chama só os lotes que faltam e junta tudo na ordem")
+
+cliente = usar_cliente(ClienteDeLotes())
+assert len(categorizador.categorizar_todos(QUATRO, tamanho_lote=1, lotes_prontos=prontos)) == 4
+assert cliente.lotes_chamados == []
+print("OK: com todos os lotes prontos, nenhum pedido é feito")
+
+mudado = [dict(QUATRO[0], descricao="OUTRA"), *QUATRO[1:]]
+categorizador.categorizar_todos(mudado, tamanho_lote=1, lotes_prontos=prontos)
+assert cliente.lotes_chamados == [["L1"]], cliente.lotes_chamados
+print("OK: lote com conteúdo diferente (mesmos ids) é chamado de novo")
+
+preparar()
+prontos = {}
+usar_cliente(ClienteDeLotes(falhar_em="L3"))
+capturar(lambda: categorizador.categorizar_todos(QUATRO, tamanho_lote=1, lotes_prontos=prontos))
+preparar(usados=LIMITE - 1)  # 1 pedido de saldo para 2 lotes que faltam
+cliente = usar_cliente(ClienteDeLotes())
+erro = deve_estourar(
+    lambda: categorizador.categorizar_todos(QUATRO, tamanho_lote=1, lotes_prontos=prontos)
+)
+assert "2 pedidos" in str(erro) and cliente.lotes_chamados == [] and len(prontos) == 2
+preparar(usados=LIMITE - 2)  # 2 de saldo: cabem os 2 que faltam, embora sejam 4 lotes
+cliente = usar_cliente(ClienteDeLotes())
+categorizador.categorizar_todos(QUATRO, tamanho_lote=1, lotes_prontos=prontos)
+assert cliente.lotes_chamados == [["L3"], ["L4"]] and pedidos_restantes() == 0
+print("OK: a recusa antecipada conta só os lotes que faltam")

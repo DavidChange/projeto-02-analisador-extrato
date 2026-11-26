@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import re
 
 import altair as alt
 import pandas as pd
@@ -20,7 +21,9 @@ from analise import (
 from categorizador import (
     LIMITE_DIARIO_APP,
     MODELO,
+    TAMANHO_LOTE,
     VERSAO_PROMPT,
+    ErroValidacao,
     categorizar_todos,
     explicar_erro,
     pedidos_restantes,
@@ -58,9 +61,18 @@ def formatar_reais(valor):
     return f"{sinal}R$ {texto}"
 
 
-def mostrar_erro_gemini(erro):
+def escapar_markdown(texto):
+    """Faz o texto aparecer como foi escrito, sem virar formatação ou fórmula no Markdown.
+
+    Junta as quebras de linha em espaços e põe uma barra antes dos caracteres especiais.
+    """
+    texto = " ".join(str(texto).split())
+    return re.sub(r"([\\`*_{}\[\]<>()#+\-.!|~$=&])", r"\\\1", texto)
+
+
+def mostrar_erro_gemini(erro, complemento=""):
     """Frase em português na tela; o texto técnico fica recolhido."""
-    st.error(explicar_erro(erro))
+    st.error(f"{explicar_erro(erro)} {complemento}".strip())
     with st.expander("Detalhes técnicos"):
         st.text(f"{type(erro).__name__}: {erro}")
 
@@ -90,7 +102,19 @@ def mostrar_erro_guardado(acao):
     guardado = st.session_state.get("erro_ia")
     if guardado is not None and guardado[0] == acao:
         del st.session_state["erro_ia"]
-        mostrar_erro_gemini(guardado[1])
+        mostrar_erro_gemini(guardado[1], guardado[2])
+
+
+def aviso_lotes_guardados(total_transacoes):
+    """Frase sobre os lotes já prontos depois de uma falha (vazia se não houver nenhum)."""
+    guardados = st.session_state.get("lotes_prontos")
+    if not guardados or not guardados["lotes"]:
+        return ""
+    total = len(range(0, total_transacoes, TAMANHO_LOTE))
+    return (
+        f"Lotes guardados: {len(guardados['lotes'])} de {total}. Um novo clique em "
+        '"Categorizar com IA" continua de onde parou.'
+    )
 
 
 def categorizar_agora(transacoes, assinatura, area, areas_saldo):
@@ -108,7 +132,15 @@ def categorizar_agora(transacoes, assinatura, area, areas_saldo):
             for area_saldo in areas_saldo:
                 mostrar_restantes(area_saldo)
 
-        cache[chave] = categorizar_todos(transacoes, progresso=atualizar_barra)
+        # Lotes já prontos deste extrato: sobrevivem a uma falha no meio
+        guardados = st.session_state.get("lotes_prontos")
+        if guardados is None or guardados["assinatura"] != assinatura:
+            guardados = {"assinatura": assinatura, "lotes": {}}
+            st.session_state["lotes_prontos"] = guardados
+        cache[chave] = categorizar_todos(
+            transacoes, progresso=atualizar_barra, lotes_prontos=guardados["lotes"]
+        )
+        del st.session_state["lotes_prontos"]  # o resultado completo já está no cache
     st.session_state["categorias"] = {"assinatura": assinatura, "resultado": cache[chave]}
 
 
@@ -194,6 +226,11 @@ transacoes = [
 assinatura = hashlib.sha256(
     json.dumps(transacoes, ensure_ascii=False, sort_keys=True).encode("utf-8")
 ).hexdigest()
+
+# Trocar de arquivo descarta os lotes guardados do extrato anterior
+lotes_guardados = st.session_state.get("lotes_prontos")
+if lotes_guardados is not None and lotes_guardados["assinatura"] != assinatura:
+    del st.session_state["lotes_prontos"]
 
 guardado = st.session_state.get("categorias")
 if guardado is not None and guardado["assinatura"] != assinatura:
@@ -415,7 +452,7 @@ if guardado is not None:
             del st.session_state["recomendacoes"]
 
         # Exemplo com categorias pré-calculadas e sem recomendações: carrega as já geradas
-        # (sem chamar o Gemini). Qualquer falha aqui só significa "não carregar".
+        # (sem chamar o Gemini). Se o arquivo salvo tiver problema, avisa e segue sem ele.
         if (
             pacote is not None
             and fonte == CAMINHO_EXEMPLO
@@ -442,8 +479,18 @@ if guardado is not None:
                         },
                         "origem": {"arquivo": CAMINHO_RECOMENDACOES_EXEMPLO},
                     }
-            except Exception:
-                pass
+            except (
+                OSError,  # arquivo que não abre
+                UnicodeDecodeError,
+                json.JSONDecodeError,
+                KeyError,  # campo ausente
+                TypeError,  # formato diferente do esperado
+                ErroValidacao,  # recomendações que não passam na conferência
+            ):
+                st.warning(
+                    "As recomendações salvas não puderam ser carregadas. Use o botão "
+                    "Gerar recomendações com IA para gerar ao vivo."
+                )
 
         if pacote is not None:
             st.button(
@@ -470,11 +517,11 @@ if guardado is not None:
                         "Os valores foram preenchidos agora a partir dos números calculados "
                         "pelo pandas. O botão gera novas recomendações ao vivo."
                     )
-            # Dois "$" na mesma linha viram fórmula no Markdown: escapa todos
+            # O texto da IA é escapado para não virar formatação (ex.: dois "$" viram fórmula)
             for numero, rec in enumerate(rec_guardado["recomendacoes"], start=1):
-                st.markdown(f"**{numero}. {rec['titulo']}**".replace("$", "\\$"))
-                st.markdown(f"Diagnóstico: {rec['diagnostico']}".replace("$", "\\$"))
-                st.markdown(f"Ação: {rec['acao']}".replace("$", "\\$"))
+                st.markdown(f"**{numero}. {escapar_markdown(rec['titulo'])}**")
+                st.markdown(f"Diagnóstico: {escapar_markdown(rec['diagnostico'])}")
+                st.markdown(f"Ação: {escapar_markdown(rec['acao'])}")
             st.caption(
                 "Os números foram calculados pelo pandas. O texto foi escrito pelo Gemini "
                 f"(modelo {rec_guardado['modelo']}, prompt {rec_guardado['versao_prompt']}) "
@@ -492,7 +539,8 @@ if acao is not None:
         elif acao == "recomendar" and pacote is not None:
             recomendar_agora(pacote, chave_pacote, assinatura, area_recomendar)
     except Exception as e:
-        st.session_state["erro_ia"] = (acao, e)
+        complemento = aviso_lotes_guardados(len(transacoes)) if acao == "categorizar" else ""
+        st.session_state["erro_ia"] = (acao, e, complemento)
     finally:
         st.session_state["rodando"] = None  # com sucesso, erro ou interrupção
     st.rerun()  # redesenha com os botões ativos e com o resultado

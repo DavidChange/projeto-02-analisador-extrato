@@ -110,7 +110,7 @@ A categorização foi avaliada sem nova chamada ao Gemini, comparando as categor
 7. Os totais dependem da categorização da IA. Uma transação na categoria errada muda o gasto por categoria (ex.: a academia aparece em Lazer em agosto e em Saúde nos outros meses).
 8. PIX enviados a pessoas ficam fora do consumo, mesmo quando pagam algo que seria gasto (ex.: dividir uma conta). Isso pode subestimar o consumo.
 9. As maiores despesas são quase só contas fixas (aluguel, faculdade, condomínio). Desde o bloco 5, o app separa gasto fixo de variável, mas a tabela de maiores despesas continua misturando os dois.
-10. A categorização é tudo ou nada: se um lote falha, os lotes já prontos são descartados.
+10. Se um lote falha, os lotes já prontos ficam guardados na sessão, e um novo clique continua de onde parou. Eles se perdem ao trocar de arquivo ou fechar a aba, e a retomada só foi testada com um Gemini simulado.
 11. O critério de gasto fixo foi calibrado nos próprios dados de exemplo (a conta de luz varia 36%; o primeiro hábito, 64%). Ele também erra em casos previsíveis: o IOF de R$ 3,85 entra como fixo; um mês incompleto conta como mês inteiro; e uma conta paga duas vezes no mesmo mês, ou um salário que cai no dia 31 e depois no dia 1º, deixa de ser fixo.
 12. A conferência garante que os números vêm do pandas, mas não avalia a qualidade das recomendações nem pega um texto que contradiga a direção (ex.: "subiu" antes de uma queda).
 13. A regra de nenhum dígito obriga o LLM a escrever números por extenso ("três meses"), e a palavra "reais" é recusada até como adjetivo ("riscos reais"). Valores escritos por extenso sem as expressões proibidas ("mil e oitocentos") passariam.

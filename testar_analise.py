@@ -202,3 +202,28 @@ assert abs(pacote["totais"]["sobra"] - resumo(df)["saldo"]) < 0.01
 assert "-0.0" not in texto, "zero negativo no JSON"
 assert "UBER" not in texto and "PIX RECEBIDO" not in texto
 print("\nPacote: coerência, JSON e privacidade (sem UBER nem PIX RECEBIDO): OK")
+
+# --- j) Categoria dos gastos fixos: a mais frequente (empate: a do mês mais recente) ---
+def categoria_do_fixo(categorias_por_mes):
+    meses = [f"2026-{n:02d}-10" for n in range(1, len(categorias_por_mes) + 1)]
+    tabela = pd.DataFrame(
+        {
+            "id": [f"C{n}" for n in range(len(meses))],
+            "data": pd.to_datetime(meses),
+            "descricao": "ACADEMIA",
+            "valor": -90.0,
+            "categoria": categorias_por_mes,
+        }
+    )
+    return gastos_fixos(tabela)["categoria"].tolist()
+
+
+LAZER, SAUDE, EDU = "Lazer e assinaturas", "Saúde", "Educação"
+assert categoria_do_fixo([LAZER, SAUDE, SAUDE]) == [SAUDE]
+assert categoria_do_fixo([SAUDE, SAUDE, LAZER]) == [SAUDE]  # vence a maioria, não o último mês
+assert categoria_do_fixo([LAZER, SAUDE, EDU]) == [EDU]  # empate geral: último mês
+assert categoria_do_fixo([SAUDE, SAUDE, LAZER, LAZER]) == [LAZER]  # empate: último mês
+assert categoria_do_fixo([LAZER, LAZER, SAUDE, SAUDE, EDU]) == [SAUDE]  # último fora do empate
+academia = gastos_fixos(df).set_index("descricao").loc["SMARTFIT ACADEMIA", "categoria"]
+assert academia == SAUDE, academia
+print("Categoria dos gastos fixos (mais frequente; empate: mês mais recente): OK")

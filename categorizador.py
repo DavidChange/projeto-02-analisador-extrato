@@ -15,6 +15,7 @@ MODELO = "gemini-3.5-flash"  # fácil de trocar
 MODELO_RESERVA = "gemini-3.5-flash-lite"  # usado se o principal falhar num lote
 VERSAO_PROMPT = "v2-regras"  # para comparar versões do prompt depois
 
+TAMANHO_LOTE = 40  # transações por pedido
 PAUSA_ENTRE_LOTES = 4  # segundos (limite do plano gratuito)
 ESPERAS_TENTATIVAS = [5, 15, 30]  # segundos de espera antes de cada nova tentativa
 CODIGOS_TEMPORARIOS = {408, 429, 500, 502, 503, 504}
@@ -364,34 +365,48 @@ def _categorizar_lote_resiliente(lote, numero):
     return [{**r, "modelo": modelo_usado} for r in resultado], extras
 
 
-def categorizar_todos(transacoes, tamanho_lote=40, estatisticas=None, progresso=None):
+def _chave_do_lote(lote):
+    """Identifica um lote pelo conteúdo enviado: (id, descrição, valor) de cada transação."""
+    return tuple((str(t["id"]), str(t["descricao"]), float(t["valor"])) for t in lote)
+
+
+def categorizar_todos(
+    transacoes, tamanho_lote=TAMANHO_LOTE, estatisticas=None, progresso=None, lotes_prontos=None
+):
     """Divide em lotes, categoriza cada um e junta. Devolve lista de {id, categoria, modelo}.
 
     estatisticas: dict opcional, preenchido com 'lotes' e 'tentativas_extras'.
-    progresso: função opcional chamada como progresso(lote_atual, total_de_lotes).
-    Se houver mais lotes que pedidos restantes hoje, levanta ErroLimiteApp sem chamar a API.
+    progresso: função opcional chamada como progresso(lotes_concluidos, total_de_lotes).
+    lotes_prontos: dict opcional {chave do lote: resultado}. Lote que já está nele não é
+        chamado de novo, e cada lote concluído é gravado nele na hora; assim, se um lote
+        falhar, a próxima chamada continua de onde parou.
+    Se faltarem mais lotes que os pedidos restantes hoje, levanta ErroLimiteApp sem chamar
+    a API.
     """
+    prontos = {} if lotes_prontos is None else lotes_prontos
     lotes = [transacoes[i : i + tamanho_lote] for i in range(0, len(transacoes), tamanho_lote)]
+    chaves = [_chave_do_lote(lote) for lote in lotes]
+    faltam = [i for i, chave in enumerate(chaves) if chave not in prontos]
+
     restantes = pedidos_restantes()
-    if len(lotes) > restantes:
+    if len(faltam) > restantes:
         raise ErroLimiteApp(
-            f"Esta categorização precisa de pelo menos {len(lotes)} pedidos ao Gemini, e o "
+            f"Esta categorização precisa de pelo menos {len(faltam)} pedidos ao Gemini, e o "
             f"limite diário de demonstração só tem {restantes} restantes. Ele volta por volta "
             'das 5h (horário de Brasília). Enquanto isso, use "Usar dados de exemplo".'
         )
-    resultados = []
     tentativas_extras = 0
 
-    for numero, lote in enumerate(lotes, start=1):
-        parcial, extras = _categorizar_lote_resiliente(lote, numero)
-        resultados.extend(parcial)
+    for posicao, i in enumerate(faltam, start=1):
+        parcial, extras = _categorizar_lote_resiliente(lotes[i], i + 1)
+        prontos[chaves[i]] = parcial
         tentativas_extras += extras
         if progresso:
-            progresso(numero, len(lotes))
-        if numero < len(lotes):
+            progresso(len(lotes) - len(faltam) + posicao, len(lotes))
+        if posicao < len(faltam):
             time.sleep(PAUSA_ENTRE_LOTES)
 
     if estatisticas is not None:
         estatisticas["lotes"] = len(lotes)
         estatisticas["tentativas_extras"] = tentativas_extras
-    return resultados
+    return [resultado for chave in chaves for resultado in prontos[chave]]

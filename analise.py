@@ -4,7 +4,8 @@ import pandas as pd
 
 # Fatura do cartão duplicaria as compras "COMPRA CARTAO" já listadas; PIX a pessoas e
 # aplicações também não são consumo.
-CATEGORIAS_FORA_CONSUMO = ["Transferências", "Investimentos"]
+CATEGORIA_INVESTIMENTOS = "Investimentos"
+CATEGORIAS_FORA_CONSUMO = ["Transferências", CATEGORIA_INVESTIMENTOS]
 CATEGORIA_RENDA = "Renda"
 # Consumo = todas as outras categorias.
 
@@ -114,7 +115,10 @@ def fora_do_consumo(df):
         ("Fatura do cartão", transf.loc[fatura, "valor"].sum()),
         ("PIX enviados", transf.loc[pix_env, "valor"].sum()),
         ("PIX recebidos", transf.loc[pix_rec, "valor"].sum()),
-        ("Investimentos", df.loc[df["categoria"] == "Investimentos", "valor"].sum()),
+        (
+            CATEGORIA_INVESTIMENTOS,
+            df.loc[df["categoria"] == CATEGORIA_INVESTIMENTOS, "valor"].sum(),
+        ),
     ]
     total_outras = transf.loc[outras, "valor"].sum()
     if total_outras != 0:
@@ -139,6 +143,14 @@ def _saidas_consumo(df):
     return saidas
 
 
+def _categoria_mais_frequente(grupo):
+    """Categoria mais frequente do grupo; no empate, a do mês mais recente entre as empatadas."""
+    contagem = grupo["categoria"].value_counts()
+    empatadas = set(contagem[contagem == contagem.max()].index)
+    do_ultimo_para_o_primeiro = grupo.sort_values("mes", ascending=False)["categoria"]
+    return next(c for c in do_ultimo_para_o_primeiro if c in empatadas)
+
+
 def _recorrentes(linhas, meses):
     """Descrições recorrentes: DataFrame (chave, categoria, media, variacao), valores em módulo.
 
@@ -157,7 +169,7 @@ def _recorrentes(linhas, meses):
             resultado.append(
                 {
                     "chave": chave,
-                    "categoria": grupo["categoria"].iloc[0],
+                    "categoria": _categoria_mais_frequente(grupo),
                     "media": media,
                     "variacao": variacao,
                 }
@@ -300,7 +312,8 @@ def montar_pacote(df):
     }
 
     r = resumo(df)
-    investimentos = df[(df["categoria"] == "Investimentos") & (df["valor"] < 0)]["valor"].sum()
+    aplicacoes = (df["categoria"] == CATEGORIA_INVESTIMENTOS) & (df["valor"] < 0)
+    investimentos = df.loc[aplicacoes, "valor"].sum()
     por_categoria = [
         {
             "categoria": linha["categoria"],
