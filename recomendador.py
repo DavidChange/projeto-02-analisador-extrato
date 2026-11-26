@@ -15,7 +15,9 @@ from categorizador import (
     ESPERAS_TENTATIVAS,
     MODELO,
     MODELO_RESERVA,
+    ErroGemini,
     ErroValidacao,
+    _cota_diaria,
     _erro_temporario,
     _obter_client,
 )
@@ -304,8 +306,9 @@ def gerar_recomendacoes(pacote, chamar=None):
     """Pede as 3 recomendações ao Gemini, confere e troca os marcadores pelos valores.
 
     chamar: função opcional (prompt, modelo) -> texto, só para testes; None = API de verdade.
-    Esgotadas as tentativas por erro temporário, tenta uma vez o MODELO_RESERVA. Se tudo
-    falhar, levanta RuntimeError (nenhuma recomendação é devolvida).
+    Esgotadas as tentativas por erro temporário, tenta uma vez o MODELO_RESERVA; com a
+    cota diária esgotada, vai direto para ele, sem esperas. Se tudo falhar, levanta
+    ErroGemini, um RuntimeError (nenhuma recomendação é devolvida).
     """
     chamar = chamar or _chamar_gemini
     marcadores = montar_marcadores(pacote)
@@ -315,19 +318,21 @@ def gerar_recomendacoes(pacote, chamar=None):
     try:
         resposta, extras = _tentar(chamar, prompt, MODELO, marcadores)
     except Exception as e:
-        if not _erro_temporario(e):
-            raise RuntimeError(
-                f"Não foi possível gerar as recomendações: {type(e).__name__}: {e}"
+        if not (_erro_temporario(e) or _cota_diaria(e)):
+            raise ErroGemini(
+                f"Não foi possível gerar as recomendações: {type(e).__name__}: {e}", e
             ) from e
-        extras = len(ESPERAS_TENTATIVAS) + 1
+        extras = 1 if _cota_diaria(e) else len(ESPERAS_TENTATIVAS) + 1
         modelo = MODELO_RESERVA
         try:
             resposta = _obter_resposta(chamar, prompt, MODELO_RESERVA, marcadores)
         except Exception as e2:
-            raise RuntimeError(
+            raise ErroGemini(
                 f"Não foi possível gerar as recomendações. Modelo principal ({MODELO}): "
                 f"{type(e).__name__}: {e}. Modelo reserva ({MODELO_RESERVA}): "
-                f"{type(e2).__name__}: {e2}"
+                f"{type(e2).__name__}: {e2}",
+                e,
+                e2,
             ) from e2
 
     return {

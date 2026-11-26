@@ -104,7 +104,7 @@ A categorização foi avaliada sem nova chamada ao Gemini, comparando as categor
 1. O estorno é classificado só pela descrição; o app não procura a compra original, que pode estar em outro lote.
 2. As regras, os rótulos manuais e o gabarito foram definidos pelo mesmo autor e seguem as mesmas regras do prompt, então as acurácias medidas (98% e 99,3%) são otimistas: medem se a IA segue as regras, não o acerto num extrato real.
 3. Dados sintéticos são mais limpos que um extrato real.
-4. O app depende da disponibilidade da API do Gemini. Em 23 e 24/11, as quatro tentativas ao vivo no app falharam (503 por sobrecarga e 429 por cota diária). O app mostrou o erro sem exibir resultado pela metade, mas o modelo reserva também falhou em todas as vezes, o 429 de cota diária é tratado como erro temporário (o app espera e tenta de novo à toa) e a mensagem de erro mostra o texto bruto da API, em inglês.
+4. O app depende da disponibilidade da API do Gemini. Em 23 e 24/11, as quatro tentativas ao vivo no app falharam (503 por sobrecarga e 429 por cota diária), e o modelo reserva também falhou em todas as vezes. Desde o bloco 7, a cota diária esgotada vai direto ao reserva, sem esperas, e os erros aparecem em português; a detecção da cota diária procura "PerDay" no texto do erro e só foi testada com erros simulados.
 5. O cache da categorização dura só enquanto a aba do navegador estiver aberta.
 6. Os 50 rótulos manuais são as 50 primeiras transações (agosto), não uma amostra aleatória, e quase todas são fáceis; os casos difíceis só foram medidos contra o gabarito.
 7. Os totais dependem da categorização da IA. Uma transação na categoria errada muda o gasto por categoria (ex.: a academia aparece em Lazer em agosto e em Saúde nos outros meses).

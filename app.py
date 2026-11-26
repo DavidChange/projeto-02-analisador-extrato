@@ -17,7 +17,7 @@ from analise import (
     montar_pacote,
     resumo,
 )
-from categorizador import MODELO, VERSAO_PROMPT, categorizar_todos
+from categorizador import MODELO, VERSAO_PROMPT, categorizar_todos, explicar_erro
 from extrato import carregar_e_validar
 from recomendador import (
     VERSAO_PROMPT_RECOMENDACOES,
@@ -47,6 +47,13 @@ def formatar_reais(valor):
     sinal = "-" if valor < 0 else ""
     texto = f"{abs(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return f"{sinal}R$ {texto}"
+
+
+def mostrar_erro_gemini(erro):
+    """Frase em português na tela; o texto técnico fica recolhido."""
+    st.error(explicar_erro(erro))
+    with st.expander("Detalhes técnicos"):
+        st.text(f"{type(erro).__name__}: {erro}")
 
 
 st.title("Analisador de extrato financeiro")
@@ -152,11 +159,8 @@ if st.button("Categorizar com IA"):
             resultado = categorizar_todos(transacoes, progresso=atualizar_barra)
             cache[chave] = resultado
             st.session_state["categorias"] = {"assinatura": assinatura, "resultado": resultado}
-        except RuntimeError as e:
-            # Mensagens já em português vindas do categorizador (chave ausente, lote que falhou)
-            st.error(str(e))
         except Exception as e:
-            st.error(f"Não foi possível categorizar o extrato ({type(e).__name__}): {e}")
+            mostrar_erro_gemini(e)
         finally:
             barra.empty()
 
@@ -385,10 +389,8 @@ if guardado is not None:
                         "assinatura": assinatura,
                         "resultado": resultado_rec,
                     }
-                except RuntimeError as e:
-                    st.error(str(e))
                 except Exception as e:
-                    st.error(f"Não foi possível gerar as recomendações ({type(e).__name__}): {e}")
+                    mostrar_erro_gemini(e)
 
         # Mostra as recomendações guardadas (continuam na tela depois de um Rerun)
         guardadas = st.session_state.get("recomendacoes")

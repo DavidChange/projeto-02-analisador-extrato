@@ -20,6 +20,23 @@ CODIGOS_TEMPORARIOS = {408, 429, 500, 502, 503, 504}
 class ErroValidacao(ValueError):
     """A resposta do Gemini veio, mas está incompleta ou inválida."""
 
+
+class ErroChave(RuntimeError):
+    """Não foi possível iniciar o cliente do Gemini (em geral, chave ausente)."""
+
+
+class ErroGemini(RuntimeError):
+    """Falha final de uma chamada ao Gemini.
+
+    A mensagem é o texto técnico; `erros` guarda os erros originais, na ordem
+    (modelo principal e, se foi chamado, modelo reserva), para explicar_erro().
+    """
+
+    def __init__(self, mensagem, *erros):
+        super().__init__(mensagem)
+        self.erros = erros
+
+
 CATEGORIAS = [
     "Moradia e contas",
     "Mercado",
@@ -103,7 +120,7 @@ def _obter_client():
     try:
         return genai.Client()
     except Exception as e:
-        raise RuntimeError(
+        raise ErroChave(
             "Não foi possível iniciar o cliente do Gemini. "
             "Confira se o arquivo .env existe e tem a GEMINI_API_KEY preenchida."
         ) from e
@@ -166,15 +183,69 @@ def _validar(entrada, resultado):
             )
 
 
-def _erro_temporario(erro):
-    """True para erros que costumam passar sozinhos: 503, 429, conexão derrubada, timeout."""
-    codigo = getattr(erro, "code", None)
-    if isinstance(codigo, int):
-        return codigo in CODIGOS_TEMPORARIOS
+def _cota_diaria(erro):
+    """True para o 429 de cota diária, que não passa com novas tentativas no mesmo dia."""
+    return getattr(erro, "code", None) == 429 and "perday" in str(erro).lower()
+
+
+def _erro_de_conexao(erro):
+    """True para conexão derrubada ou timeout."""
     if isinstance(erro, (ConnectionError, TimeoutError)):
         return True
     # Erros de rede da biblioteca HTTP usada pelo google-genai (httpx/httpcore)
     return type(erro).__module__.split(".")[0].startswith(("httpx", "httpcore"))
+
+
+def _erro_temporario(erro):
+    """True para erros que costumam passar sozinhos: 503, 429, conexão derrubada, timeout.
+
+    O 429 de cota diária não conta como temporário.
+    """
+    if _cota_diaria(erro):
+        return False
+    codigo = getattr(erro, "code", None)
+    if isinstance(codigo, int):
+        return codigo in CODIGOS_TEMPORARIOS
+    return _erro_de_conexao(erro)
+
+
+def _frase_do_erro(erro):
+    """Frase curta em português para um erro só, sem o texto bruto da API."""
+    if _cota_diaria(erro):
+        return (
+            "A cota diária gratuita do Gemini acabou e se renova por volta das 5h "
+            '(horário de Brasília). Enquanto isso, use "Usar dados de exemplo".'
+        )
+    codigo = getattr(erro, "code", None)
+    if codigo == 429:  # a cota diária já foi tratada acima: aqui é o limite por minuto
+        return "Foram muitos pedidos ao Gemini em pouco tempo. Espere um minuto e tente de novo."
+    if codigo in (500, 502, 503, 504):
+        return "O Gemini está sobrecarregado ou fora do ar. Tente de novo em alguns minutos."
+    if codigo == 408 or _erro_de_conexao(erro):
+        return "A conexão com o Gemini caiu ou demorou demais. Confira a internet e tente de novo."
+    texto = str(erro).lower()
+    chave_recusada = codigo == 400 and ("api_key_invalid" in texto or "api key" in texto)
+    if chave_recusada or codigo in (401, 403) or isinstance(erro, ErroChave):
+        return (
+            "O Gemini não aceitou o acesso: a chave da API pode estar inválida ou ausente. "
+            "Confira a GEMINI_API_KEY."
+        )
+    return (
+        "Não foi possível obter uma resposta válida do Gemini. "
+        'Tente de novo mais tarde ou use "Usar dados de exemplo".'
+    )
+
+
+def explicar_erro(erro):
+    """Frase em português para mostrar ao usuário.
+
+    Se o modelo principal e o reserva falharam por motivos diferentes, explica os dois.
+    """
+    erros = getattr(erro, "erros", None) if isinstance(erro, ErroGemini) else None
+    frases = [_frase_do_erro(e) for e in (erros or (erro,))]
+    if len(set(frases)) == 1:
+        return frases[0]
+    return f"Modelo principal: {frases[0]} Modelo reserva: {frases[1]}"
 
 
 def _tentar_lote(lote, modelo):
@@ -205,27 +276,31 @@ def _tentar_lote(lote, modelo):
 def _categorizar_lote_resiliente(lote, numero):
     """Tenta o modelo principal e, se esgotar as tentativas, o modelo reserva uma vez.
 
+    Com a cota diária esgotada no principal, vai direto para o reserva, sem esperas.
     Devolve (lista de {id, categoria, modelo}, tentativas_extras).
     """
     try:
         resultado, extras = _tentar_lote(lote, MODELO)
         modelo_usado = MODELO
     except Exception as e:
-        if not (_erro_temporario(e) or isinstance(e, ErroValidacao)):
-            raise RuntimeError(
+        if not (_erro_temporario(e) or _cota_diaria(e) or isinstance(e, ErroValidacao)):
+            raise ErroGemini(
                 f"O lote {numero} falhou com um erro que não é temporário: "
-                f"{type(e).__name__}: {e}"
+                f"{type(e).__name__}: {e}",
+                e,
             ) from e
-        # Esgotou as tentativas com o modelo principal: 1 tentativa com o reserva
-        extras = len(ESPERAS_TENTATIVAS) + 1
+        # Esgotou as tentativas (ou a cota diária) do principal: 1 tentativa com o reserva
+        extras = 1 if _cota_diaria(e) else len(ESPERAS_TENTATIVAS) + 1
         try:
             resultado = categorizar_lote(lote, MODELO_RESERVA)
             modelo_usado = MODELO_RESERVA
         except Exception as e2:
-            raise RuntimeError(
+            raise ErroGemini(
                 f"O lote {numero} falhou. Modelo principal ({MODELO}): "
                 f"{type(e).__name__}: {e}. Modelo reserva ({MODELO_RESERVA}): "
-                f"{type(e2).__name__}: {e2}"
+                f"{type(e2).__name__}: {e2}",
+                e,
+                e2,
             ) from e2
     return [{**r, "modelo": modelo_usado} for r in resultado], extras
 
