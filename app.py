@@ -2,7 +2,6 @@ import hashlib
 import html
 import json
 import os
-import re
 import unicodedata
 
 import pandas as pd
@@ -104,7 +103,16 @@ ESTILO = """
 .parcela { display: flex; align-items: center; gap: 7px; margin-top: 4px;
     font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
 .rotulo-secao { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
-    letter-spacing: 0.08em; opacity: 0.65; padding-bottom: 6px; }
+    letter-spacing: 0.08em; opacity: 0.65; }
+.subtitulo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; margin-top: 12px; }
+.subtitulo-texto { font-size: 1.2rem; font-weight: 600; line-height: 1.3; }
+.recomendacoes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.rec { display: flex; flex-direction: column; gap: 10px; overflow-wrap: anywhere; }
+.rec-numero { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #ff7a4d; }
+.rec-titulo { font-size: 1.05rem; font-weight: 700; line-height: 1.3; }
+.rec-diagnostico { font-size: 0.85rem; line-height: 1.5; color: #a5a3a0; }
+.rec-acao { font-size: 0.85rem; line-height: 1.5; margin-top: auto; padding-top: 10px;
+    border-top: 1px solid #1d1d21; }
 .contagem { font-size: 0.875rem; color: #a5a3a0; }
 .filtro-ativo { color: #ff7a4d; }
 .st-key-limpar_filtros button { min-height: 0; padding: 2px 12px; }
@@ -113,7 +121,8 @@ ESTILO = """
     padding-top: 20px; border-top: 1px solid #1d1d21; }
 .secao-numero { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #ff7a4d; }
 .secao-titulo { font-size: 1.75rem; font-weight: 700; line-height: 1.2; }
-@media (max-width: 640px) { .paineis { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+    .paineis, .recomendacoes { grid-template-columns: minmax(0, 1fr); } }
 [data-testid="stMetricLabel"] p, [data-testid="stMetricValue"] {
     font-family: 'JetBrains Mono', monospace; }
 </style>
@@ -131,15 +140,6 @@ def formatar_reais(valor):
     sinal = "-" if valor < 0 else ""
     texto = f"{abs(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return f"{sinal}R$ {texto}"
-
-
-def escapar_markdown(texto):
-    """Faz o texto aparecer como foi escrito, sem virar formatação ou fórmula no Markdown.
-
-    Junta as quebras de linha em espaços e põe uma barra antes dos caracteres especiais.
-    """
-    texto = " ".join(str(texto).split())
-    return re.sub(r"([\\`*_{}\[\]<>()#+\-.!|~$=&])", r"\\\1", texto)
 
 
 def mostrar_erro_gemini(erro, complemento=""):
@@ -263,9 +263,7 @@ def limpar_filtros(chave):
 def mostrar_extrato(tabela, assinatura, desativado):
     """Filtros e tabela do extrato. Só muda o que aparece: os cálculos usam o extrato inteiro."""
     tem_categorias = "categoria" in tabela.columns
-    with st.container(horizontal=True, vertical_alignment="bottom"):
-        st.subheader("Extrato", width="content")
-        st.html('<div class="rotulo-secao">FILTRAR TRANSAÇÕES</div>', width="content")
+    subtitulo("Extrato", "FILTRAR TRANSAÇÕES")
     areas = st.columns(3 if tem_categorias else 2)
     # A assinatura nas chaves faz os filtros voltarem ao início quando o extrato muda
     chave = assinatura[:12]
@@ -360,6 +358,32 @@ def mostrar_fixo_variavel(fixo_variavel):
             f"Variável {variavel}</div></div>"
         )
     st.html(f'<div class="cartoes">{"".join(cartoes)}</div>')
+
+
+def texto_do_cartao(texto):
+    """Protege o texto da IA e depois prende o "R$" ao número, para não quebrarem de linha."""
+    return html.escape(str(texto)).replace("R$ ", "R$&nbsp;")
+
+
+def mostrar_recomendacoes(recomendacoes):
+    """Um cartão por recomendação. O texto da IA entra no HTML sempre por html.escape."""
+    cartoes = "".join(
+        f'<div class="cartao rec"><div class="rec-numero">{numero:02d}</div>'
+        f'<div class="rec-titulo">{texto_do_cartao(rec["titulo"])}</div>'
+        f'<div class="rec-diagnostico">{texto_do_cartao(rec["diagnostico"])}</div>'
+        f'<div class="rec-acao">→ {texto_do_cartao(rec["acao"])}</div></div>'
+        for numero, rec in enumerate(recomendacoes, start=1)
+    )
+    st.html(f'<div class="recomendacoes">{cartoes}</div>')
+
+
+def subtitulo(texto, rotulo=None):
+    """Subtítulo dentro de uma seção: menor que o título numerado, sem número."""
+    extra = f'<span class="rotulo-secao">{rotulo}</span>' if rotulo else ""
+    st.html(
+        '<div class="subtitulo" role="heading" aria-level="3">'
+        f'<span class="subtitulo-texto">{texto}</span>{extra}</div>'
+    )
 
 
 def titulo_secao(numero, texto):
@@ -685,11 +709,7 @@ if df_cat is not None:
                     "Os valores foram preenchidos agora a partir dos números calculados "
                     "pelo pandas. O botão gera novas recomendações ao vivo."
                 )
-        # O texto da IA é escapado para não virar formatação (ex.: dois "$" viram fórmula)
-        for numero, rec in enumerate(rec_guardado["recomendacoes"], start=1):
-            st.markdown(f"**{numero}. {escapar_markdown(rec['titulo'])}**")
-            st.markdown(f"Diagnóstico: {escapar_markdown(rec['diagnostico'])}")
-            st.markdown(f"Ação: {escapar_markdown(rec['acao'])}")
+        mostrar_recomendacoes(rec_guardado["recomendacoes"])
         st.caption(
             "Os números foram calculados pelo pandas. O texto foi escrito pelo Gemini "
             f"(modelo {rec_guardado['modelo']}, prompt {rec_guardado['versao_prompt']}) "
@@ -707,7 +727,7 @@ if guardado is None:
 titulo_secao("05", "Detalhes")
 if df_cat is not None:
     # --- Gasto fixo x variável ---
-    st.subheader("Gasto fixo x variável")
+    subtitulo("Gasto fixo x variável")
     fixo_variavel = fixo_variavel_mensal(df_cat)
     if fixo_variavel.empty:
         st.info("A separação entre gasto fixo e variável precisa de pelo menos 3 meses de extrato.")
@@ -723,7 +743,7 @@ if df_cat is not None:
         st.caption("Fixo = aparece uma vez por mês, em todos os meses, com variação de valor de até 50%.")
 
     # As 10 maiores despesas de consumo
-    st.subheader("Maiores despesas")
+    subtitulo("Maiores despesas")
     top = maiores_despesas(df_cat, n=10)
     top_tela = {
         "ID": top["id"],
@@ -736,7 +756,7 @@ if df_cat is not None:
     st.caption("Só despesas de consumo; fatura, PIX a pessoas e aplicações ficam de fora.")
 
     # Tabela do que ficou fora do consumo (valores com sinal)
-    st.subheader("Fora do consumo")
+    subtitulo("Fora do consumo")
     fora = fora_do_consumo(df_cat)
     fora_tela = {
         "Grupo": fora["descricao_grupo"],
