@@ -27,7 +27,7 @@ CORES = {
 }
 COR_FORA_DA_LISTA = "#8a8890"
 # Altura (px) do quadro onde o HTML é mostrado; cabe tudo em telas de 375 a 1280 px de largura
-ALTURA_QUADRO = 640
+ALTURA_QUADRO = 560
 
 
 def valor_por_ponto(total):
@@ -100,10 +100,12 @@ MODELO_HTML = """<!DOCTYPE html>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;600;700&display=swap">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; }
-body { background: #050506; color: #e9e7e4; font-family: 'Space Grotesk', sans-serif; }
-.bloco { display: grid; grid-template-columns: minmax(230px, 1fr) 2fr;
-    grid-template-rows: 100%; gap: 24px; height: 100%; }
+html, body { height: 100%; overflow: hidden; background: #050506; }  /* cor da página */
+body { color: #e9e7e4; font-family: 'Space Grotesk', sans-serif; }
+.bloco { display: grid; grid-template-columns: minmax(300px, 1fr) 2fr;
+    grid-template-rows: 100%; gap: 24px; height: 100%;
+    /* o bloco inteiro é um cartão, no mesmo estilo dos cartões do app */
+    background: #0b0b0d; border: 1px solid #1d1d21; border-radius: 14px; padding: 24px; }
 .texto { align-self: center; }
 .rotulo { font-family: 'JetBrains Mono', monospace; font-size: 12px; opacity: 0.65; }
 h1 { font-size: 30px; line-height: 1.15; margin: 12px 0; }
@@ -124,6 +126,15 @@ canvas { position: absolute; top: 0; left: 0; display: block; width: 100%; heigh
     h1 { font-size: 23px; margin: 8px 0; }
     .frase { font-size: 14px; line-height: 1.4; }
     .botoes { margin-top: 12px; }
+}
+/* Telas muito estreitas (quadro de até 340 px): menos espaço, para os grupos caberem */
+@media (max-width: 340px) {
+    .bloco { padding: 12px; gap: 10px; }
+    h1 { font-size: 20px; margin: 6px 0; }
+    .rotulo { font-size: 11px; }
+    .frase { font-size: 12.5px; line-height: 1.35; }
+    .botoes { margin-top: 8px; gap: 6px; }
+    button { font-size: 11px; padding: 6px 10px; }
 }
 </style>
 </head>

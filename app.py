@@ -51,6 +51,11 @@ URL_REPOSITORIO = "https://github.com/DavidChange/projeto-02-analisador-extrato"
 # Aparência da barra do topo e dos cartões (as cores gerais estão em .streamlit/config.toml)
 ESTILO = """
 <style>
+/* Página larga, com o conteúdo limitado a 1180 px e centralizado */
+.stMain [data-testid="stMainBlockContainer"] { margin: 0 auto; }
+@media (min-width: 641px) {
+    .stMain [data-testid="stMainBlockContainer"] { max-width: calc(1180px + 4rem);
+        padding-left: 2rem; padding-right: 2rem; } }
 .topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
     gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #1d1d21; }
 .topo-nome { font-size: 1.5rem; font-weight: 700; }
@@ -318,7 +323,7 @@ def mostrar_extrato(tabela, assinatura, desativado):
             # larguras (px) para as 5 colunas caberem na tela do computador
             "ID": st.column_config.Column(width=60),
             "Data": st.column_config.DateColumn(format="DD/MM/YYYY", width=100),
-            "Descrição": st.column_config.Column(width=270),
+            "Descrição": st.column_config.Column(width=745),
             "Valor": st.column_config.Column(width=100),
             "Categoria": st.column_config.Column(width=160),
         },
@@ -490,6 +495,7 @@ def recomendar_agora(pacote, chave_pacote, assinatura, area):
     }
 
 
+st.set_page_config(layout="wide")  # precisa vir antes de desenhar a página
 st.html(ESTILO)
 area_topo = st.empty()  # redesenhada durante a categorização, para o saldo acompanhar
 mostrar_topo(area_topo)
