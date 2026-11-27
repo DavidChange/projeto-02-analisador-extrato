@@ -178,7 +178,8 @@ def _obter_client():
     except Exception as e:
         raise ErroChave(
             "Não foi possível iniciar o cliente do Gemini. "
-            "Confira se o arquivo .env existe e tem a GEMINI_API_KEY preenchida."
+            "Confira a GEMINI_API_KEY: no .env, rodando no computador, ou no Secrets do "
+            "Streamlit, no site."
         ) from e
 
 
@@ -287,8 +288,9 @@ def _frase_do_erro(erro):
     chave_recusada = codigo == 400 and ("api_key_invalid" in texto or "api key" in texto)
     if chave_recusada or codigo in (401, 403) or isinstance(erro, ErroChave):
         return (
-            "O Gemini não aceitou o acesso: a chave da API pode estar inválida ou ausente. "
-            "Confira a GEMINI_API_KEY."
+            "A IA está indisponível agora: a chave de acesso do app ao Gemini foi recusada ou "
+            "não está configurada. O problema é do app, não do seu arquivo. Enquanto isso, use "
+            '"Usar dados de exemplo".'
         )
     return (
         "Não foi possível obter uma resposta válida do Gemini. "
