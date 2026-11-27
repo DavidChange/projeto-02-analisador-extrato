@@ -29,6 +29,7 @@ from categorizador import (
     pedidos_restantes,
 )
 from extrato import carregar_e_validar
+from particulas import ALTURA_QUADRO, html_particulas
 from recomendador import (
     VERSAO_PROMPT_RECOMENDACOES,
     gerar_recomendacoes,
@@ -370,6 +371,13 @@ if guardado is not None:
         r = resumo(df_cat)
 
         mostrar_cartoes(r)
+
+        # Animação: cada ponto é um pedaço do consumo (as datas são as do resumo, no alto)
+        periodo = f"{df['data'].min():%d/%m/%Y} a {df['data'].max():%d/%m/%Y}"
+        st.iframe(
+            html_particulas(gasto_por_categoria(df_cat), periodo, r["consumo"]),
+            height=ALTURA_QUADRO,
+        )
 
         # Gráfico de barras horizontais: maior gasto no topo
         st.subheader("Gasto por categoria")
