@@ -109,6 +109,10 @@ ESTILO = """
 .filtro-ativo { color: #ff7a4d; }
 .st-key-limpar_filtros button { min-height: 0; padding: 2px 12px; }
 .st-key-limpar_filtros button p { font-size: 0.75rem; }
+.secao { display: flex; align-items: baseline; gap: 12px; margin-top: 28px;
+    padding-top: 20px; border-top: 1px solid #1d1d21; }
+.secao-numero { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #ff7a4d; }
+.secao-titulo { font-size: 1.75rem; font-weight: 700; line-height: 1.2; }
 @media (max-width: 640px) { .paineis { grid-template-columns: minmax(0, 1fr); } }
 [data-testid="stMetricLabel"] p, [data-testid="stMetricValue"] {
     font-family: 'JetBrains Mono', monospace; }
@@ -358,6 +362,15 @@ def mostrar_fixo_variavel(fixo_variavel):
     st.html(f'<div class="cartoes">{"".join(cartoes)}</div>')
 
 
+def titulo_secao(numero, texto):
+    """Título numerado das seções da página (ex.: 01 Envie o extrato)."""
+    st.html(
+        '<div class="secao" role="heading" aria-level="2">'
+        f'<span class="secao-numero">{numero}</span>'
+        f'<span class="secao-titulo">{texto}</span></div>'
+    )
+
+
 def marcar_execucao(acao):
     """on_click dos botões de IA: marca na sessão o que vai rodar."""
     if not st.session_state.get("rodando"):
@@ -440,6 +453,7 @@ mostrar_topo(area_topo)
 # True enquanto há uma chamada ao Gemini marcada: desativa os controles da tela
 ocupado = st.session_state.get("rodando") is not None
 
+titulo_secao("01", "Envie o extrato")
 arquivo = st.file_uploader("Envie um extrato em CSV", type="csv", disabled=ocupado)
 
 # Guarda no session_state que o usuário pediu o exemplo (o Streamlit reroda o script a cada clique)
@@ -489,10 +503,8 @@ col5.metric(
     help="Inclui a fatura do cartão, PIX a pessoas e aplicações",
 )
 
-# Espaço reservado para a tabela (preenchido depois, para já mostrar a coluna "categoria")
-area_tabela = st.container()
-
 # --- Categorização com IA ---
+titulo_secao("02", "Categorize com IA")
 transacoes = [
     {"id": str(l.id), "descricao": str(l.descricao), "valor": float(l.valor)}
     for l in df.itertuples()
@@ -553,30 +565,19 @@ if guardado is not None:
     mapa = {r["id"]: r["categoria"] for r in guardado["resultado"]}
     tabela["categoria"] = tabela["id"].astype(str).map(mapa)
 
-with area_tabela:
-    if guardado is not None and "origem" in guardado:
-        st.info(
-            f"Categorias pré-calculadas pelo Gemini ({guardado['origem']['modelo']}, "
-            f"prompt {guardado['origem']['versao_prompt']}) e carregadas de "
-            f"{CAMINHO_CATEGORIAS_EXEMPLO}, sem nova chamada à API. "
-            "Use o botão Categorizar com IA para categorizar ao vivo."
-        )
-    mostrar_extrato(tabela, assinatura, ocupado)
-
-# Contagem de transações por categoria
-if guardado is not None:
-    st.subheader("Transações por categoria")
-    contagem = (
-        tabela["categoria"]
-        .value_counts()
-        .rename_axis("categoria")
-        .reset_index(name="transações")
+# Aviso das categorias pré-calculadas
+if guardado is not None and "origem" in guardado:
+    st.info(
+        f"Categorias pré-calculadas pelo Gemini ({guardado['origem']['modelo']}, "
+        f"prompt {guardado['origem']['versao_prompt']}) e carregadas de "
+        f"{CAMINHO_CATEGORIAS_EXEMPLO}, sem nova chamada à API. "
+        "Use o botão Categorizar com IA para categorizar ao vivo."
     )
-    st.dataframe(contagem, hide_index=True, width="stretch")
 
-# --- Análise dos gastos (só depois da categorização) ---
+# --- 03: o resultado (só depois da categorização) ---
+df_cat = None
 if guardado is not None:
-    st.header("Análise dos gastos")
+    titulo_secao("03", "O resultado")
     try:
         df_cat = juntar_categorias(df, guardado["resultado"])
     except ValueError as e:
@@ -595,147 +596,171 @@ if guardado is not None:
 
         mostrar_paineis(evolucao_mensal(df_cat), gasto_por_categoria(df_cat))
 
-        # As 10 maiores despesas de consumo
-        st.subheader("Maiores despesas")
-        top = maiores_despesas(df_cat, n=10)
-        top_tela = {
-            "ID": top["id"],
-            "Data": top["data"].dt.strftime("%d/%m/%Y"),
-            "Descrição": top["descricao"],
-            "Valor": top["valor"].map(formatar_reais),
-            "Categoria": top["categoria"],
-        }
-        st.dataframe(top_tela, hide_index=True, width="stretch")
-        st.caption("Só despesas de consumo; fatura, PIX a pessoas e aplicações ficam de fora.")
+# --- 04: recomendações da IA ---
+if df_cat is not None:
+    titulo_secao("04", "Recomendações da IA")
+    area_aviso_rec = st.container()  # aviso das pré-geradas (preenchido depois do botão)
+    try:
+        pacote = montar_pacote(df_cat)
+        chave_pacote = hashlib.sha256(
+            json.dumps(pacote, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+    except ValueError as e:
+        st.info(str(e))
 
-        # Tabela do que ficou fora do consumo (valores com sinal)
-        st.subheader("Fora do consumo")
-        fora = fora_do_consumo(df_cat)
-        fora_tela = {
-            "Grupo": fora["descricao_grupo"],
-            "Total": fora["total"].map(formatar_reais),
-        }
-        st.dataframe(fora_tela, hide_index=True, width="stretch")
+    # Se o extrato ou o pacote mudou, as recomendações antigas são descartadas
+    guardadas = st.session_state.get("recomendacoes")
+    if guardadas is not None and (
+        guardadas["assinatura"] != assinatura or guardadas.get("pacote") != chave_pacote
+    ):
+        del st.session_state["recomendacoes"]
+    # Pré-geradas só valem enquanto as categorias também forem as pré-calculadas
+    guardadas = st.session_state.get("recomendacoes")
+    if guardadas is not None and "origem" in guardadas and "origem" not in guardado:
+        del st.session_state["recomendacoes"]
+
+    # Exemplo com categorias pré-calculadas e sem recomendações: carrega as já geradas
+    # (sem chamar o Gemini). Se o arquivo salvo tiver problema, avisa e segue sem ele.
+    if (
+        pacote is not None
+        and fonte == CAMINHO_EXEMPLO
+        and "origem" in guardado
+        and "recomendacoes" not in st.session_state
+        and os.path.exists(CAMINHO_RECOMENDACOES_EXEMPLO)
+    ):
+        try:
+            with open(CAMINHO_RECOMENDACOES_EXEMPLO, encoding="utf-8") as f:
+                salvo = json.load(f)
+            if salvo["versao_prompt"] == VERSAO_PROMPT_RECOMENDACOES:
+                marcadores_rec = montar_marcadores(pacote)
+                validar_resposta(salvo["resposta_bruta"], marcadores_rec)
+                st.session_state["recomendacoes"] = {
+                    "assinatura": assinatura,
+                    "pacote": chave_pacote,
+                    "resultado": {
+                        # Texto preenchido de novo com os números do pacote atual
+                        "recomendacoes": preencher_resposta(
+                            salvo["resposta_bruta"], marcadores_rec
+                        ),
+                        "modelo": salvo["modelo"],
+                        "versao_prompt": salvo["versao_prompt"],
+                    },
+                    "origem": {"arquivo": CAMINHO_RECOMENDACOES_EXEMPLO},
+                }
+        except (
+            OSError,  # arquivo que não abre
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+            KeyError,  # campo ausente
+            TypeError,  # formato diferente do esperado
+            ErroValidacao,  # recomendações que não passam na conferência
+        ):
+            st.warning(
+                "As recomendações salvas não puderam ser carregadas. Use o botão "
+                "Gerar recomendações com IA para gerar ao vivo."
+            )
+
+    if pacote is not None:
+        st.button(
+            "Gerar recomendações com IA",
+            on_click=marcar_execucao,
+            args=("recomendar",),
+            disabled=ocupado,
+        )
+        areas_restantes.append(st.empty())
+        mostrar_restantes(areas_restantes[-1])
+        area_recomendar = st.empty()  # aviso de "gerando"
+        mostrar_erro_guardado("recomendar")
+
+    # Mostra as recomendações guardadas (continuam na tela depois de um Rerun)
+    guardadas = st.session_state.get("recomendacoes")
+    if pacote is not None and guardadas is not None:
+        rec_guardado = guardadas["resultado"]
+        if "origem" in guardadas:
+            with area_aviso_rec:
+                st.info(
+                    f"Recomendações pré-geradas pelo Gemini ({rec_guardado['modelo']}, "
+                    f"prompt {rec_guardado['versao_prompt']}) e salvas em "
+                    f"{guardadas['origem']['arquivo']}, sem nova chamada à API. "
+                    "Os valores foram preenchidos agora a partir dos números calculados "
+                    "pelo pandas. O botão gera novas recomendações ao vivo."
+                )
+        # O texto da IA é escapado para não virar formatação (ex.: dois "$" viram fórmula)
+        for numero, rec in enumerate(rec_guardado["recomendacoes"], start=1):
+            st.markdown(f"**{numero}. {escapar_markdown(rec['titulo'])}**")
+            st.markdown(f"Diagnóstico: {escapar_markdown(rec['diagnostico'])}")
+            st.markdown(f"Ação: {escapar_markdown(rec['acao'])}")
         st.caption(
-            "Não entram no consumo: a fatura repetiria as compras do cartão já listadas; "
-            "PIX a pessoas e aplicações não dizem com o que o dinheiro foi gasto."
+            "Os números foram calculados pelo pandas. O texto foi escrito pelo Gemini "
+            f"(modelo {rec_guardado['modelo']}, prompt {rec_guardado['versao_prompt']}) "
+            "usando marcadores, e conferido automaticamente: o LLM não escreve nem calcula "
+            "números. Conteúdo educativo, não é recomendação de investimento."
         )
 
-        # --- Gasto fixo x variável ---
-        st.subheader("Gasto fixo x variável")
-        fixo_variavel = fixo_variavel_mensal(df_cat)
-        if fixo_variavel.empty:
-            st.info("A separação entre gasto fixo e variável precisa de pelo menos 3 meses de extrato.")
-        else:
-            mostrar_fixo_variavel(fixo_variavel)
-            with st.expander("Gastos considerados fixos"):
-                fixos = gastos_fixos(df_cat)
-                fixos_tela = {
-                    "Descrição": fixos["descricao"],
-                    "Gasto médio": fixos["gasto_medio"].map(formatar_reais),
-                }
-                st.dataframe(fixos_tela, hide_index=True, width="stretch")
-            st.caption("Fixo = aparece uma vez por mês, em todos os meses, com variação de valor de até 50%.")
+# Sem categorias ainda: os títulos 03 e 04 aparecem, para a numeração não pular
+if guardado is None:
+    for numero, texto in (("03", "O resultado"), ("04", "Recomendações da IA")):
+        titulo_secao(numero, texto)
+        st.caption("Aparece depois da categorização.")
 
-        # --- Recomendações (IA) ---
-        st.subheader("Recomendações (IA)")
-        area_aviso_rec = st.container()  # aviso das pré-geradas (preenchido depois do botão)
-        try:
-            pacote = montar_pacote(df_cat)
-            chave_pacote = hashlib.sha256(
-                json.dumps(pacote, ensure_ascii=False, sort_keys=True).encode("utf-8")
-            ).hexdigest()
-        except ValueError as e:
-            st.info(str(e))
+# --- 05: detalhes ---
+titulo_secao("05", "Detalhes")
+if df_cat is not None:
+    # --- Gasto fixo x variável ---
+    st.subheader("Gasto fixo x variável")
+    fixo_variavel = fixo_variavel_mensal(df_cat)
+    if fixo_variavel.empty:
+        st.info("A separação entre gasto fixo e variável precisa de pelo menos 3 meses de extrato.")
+    else:
+        mostrar_fixo_variavel(fixo_variavel)
+        with st.expander("Gastos considerados fixos"):
+            fixos = gastos_fixos(df_cat)
+            fixos_tela = {
+                "Descrição": fixos["descricao"],
+                "Gasto médio": fixos["gasto_medio"].map(formatar_reais),
+            }
+            st.dataframe(fixos_tela, hide_index=True, width="stretch")
+        st.caption("Fixo = aparece uma vez por mês, em todos os meses, com variação de valor de até 50%.")
 
-        # Se o extrato ou o pacote mudou, as recomendações antigas são descartadas
-        guardadas = st.session_state.get("recomendacoes")
-        if guardadas is not None and (
-            guardadas["assinatura"] != assinatura or guardadas.get("pacote") != chave_pacote
-        ):
-            del st.session_state["recomendacoes"]
-        # Pré-geradas só valem enquanto as categorias também forem as pré-calculadas
-        guardadas = st.session_state.get("recomendacoes")
-        if guardadas is not None and "origem" in guardadas and "origem" not in guardado:
-            del st.session_state["recomendacoes"]
+    # As 10 maiores despesas de consumo
+    st.subheader("Maiores despesas")
+    top = maiores_despesas(df_cat, n=10)
+    top_tela = {
+        "ID": top["id"],
+        "Data": top["data"].dt.strftime("%d/%m/%Y"),
+        "Descrição": top["descricao"],
+        "Valor": top["valor"].map(formatar_reais),
+        "Categoria": top["categoria"],
+    }
+    st.dataframe(top_tela, hide_index=True, width="stretch")
+    st.caption("Só despesas de consumo; fatura, PIX a pessoas e aplicações ficam de fora.")
 
-        # Exemplo com categorias pré-calculadas e sem recomendações: carrega as já geradas
-        # (sem chamar o Gemini). Se o arquivo salvo tiver problema, avisa e segue sem ele.
-        if (
-            pacote is not None
-            and fonte == CAMINHO_EXEMPLO
-            and "origem" in guardado
-            and "recomendacoes" not in st.session_state
-            and os.path.exists(CAMINHO_RECOMENDACOES_EXEMPLO)
-        ):
-            try:
-                with open(CAMINHO_RECOMENDACOES_EXEMPLO, encoding="utf-8") as f:
-                    salvo = json.load(f)
-                if salvo["versao_prompt"] == VERSAO_PROMPT_RECOMENDACOES:
-                    marcadores_rec = montar_marcadores(pacote)
-                    validar_resposta(salvo["resposta_bruta"], marcadores_rec)
-                    st.session_state["recomendacoes"] = {
-                        "assinatura": assinatura,
-                        "pacote": chave_pacote,
-                        "resultado": {
-                            # Texto preenchido de novo com os números do pacote atual
-                            "recomendacoes": preencher_resposta(
-                                salvo["resposta_bruta"], marcadores_rec
-                            ),
-                            "modelo": salvo["modelo"],
-                            "versao_prompt": salvo["versao_prompt"],
-                        },
-                        "origem": {"arquivo": CAMINHO_RECOMENDACOES_EXEMPLO},
-                    }
-            except (
-                OSError,  # arquivo que não abre
-                UnicodeDecodeError,
-                json.JSONDecodeError,
-                KeyError,  # campo ausente
-                TypeError,  # formato diferente do esperado
-                ErroValidacao,  # recomendações que não passam na conferência
-            ):
-                st.warning(
-                    "As recomendações salvas não puderam ser carregadas. Use o botão "
-                    "Gerar recomendações com IA para gerar ao vivo."
-                )
+    # Tabela do que ficou fora do consumo (valores com sinal)
+    st.subheader("Fora do consumo")
+    fora = fora_do_consumo(df_cat)
+    fora_tela = {
+        "Grupo": fora["descricao_grupo"],
+        "Total": fora["total"].map(formatar_reais),
+    }
+    st.dataframe(fora_tela, hide_index=True, width="stretch")
+    st.caption(
+        "Não entram no consumo: a fatura repetiria as compras do cartão já listadas; "
+        "PIX a pessoas e aplicações não dizem com o que o dinheiro foi gasto."
+    )
 
-        if pacote is not None:
-            st.button(
-                "Gerar recomendações com IA",
-                on_click=marcar_execucao,
-                args=("recomendar",),
-                disabled=ocupado,
-            )
-            areas_restantes.append(st.empty())
-            mostrar_restantes(areas_restantes[-1])
-            area_recomendar = st.empty()  # aviso de "gerando"
-            mostrar_erro_guardado("recomendar")
+# Contagem de transações por categoria
+if guardado is not None:
+    with st.expander("Transações por categoria"):
+        contagem = (
+            tabela["categoria"]
+            .value_counts()
+            .rename_axis("categoria")
+            .reset_index(name="transações")
+        )
+        st.dataframe(contagem, hide_index=True, width="stretch")
 
-        # Mostra as recomendações guardadas (continuam na tela depois de um Rerun)
-        guardadas = st.session_state.get("recomendacoes")
-        if pacote is not None and guardadas is not None:
-            rec_guardado = guardadas["resultado"]
-            if "origem" in guardadas:
-                with area_aviso_rec:
-                    st.info(
-                        f"Recomendações pré-geradas pelo Gemini ({rec_guardado['modelo']}, "
-                        f"prompt {rec_guardado['versao_prompt']}) e salvas em "
-                        f"{guardadas['origem']['arquivo']}, sem nova chamada à API. "
-                        "Os valores foram preenchidos agora a partir dos números calculados "
-                        "pelo pandas. O botão gera novas recomendações ao vivo."
-                    )
-            # O texto da IA é escapado para não virar formatação (ex.: dois "$" viram fórmula)
-            for numero, rec in enumerate(rec_guardado["recomendacoes"], start=1):
-                st.markdown(f"**{numero}. {escapar_markdown(rec['titulo'])}**")
-                st.markdown(f"Diagnóstico: {escapar_markdown(rec['diagnostico'])}")
-                st.markdown(f"Ação: {escapar_markdown(rec['acao'])}")
-            st.caption(
-                "Os números foram calculados pelo pandas. O texto foi escrito pelo Gemini "
-                f"(modelo {rec_guardado['modelo']}, prompt {rec_guardado['versao_prompt']}) "
-                "usando marcadores, e conferido automaticamente: o LLM não escreve nem calcula "
-                "números. Conteúdo educativo, não é recomendação de investimento."
-            )
+# O extrato aparece também antes da categorização (sem a coluna "Categoria")
+mostrar_extrato(tabela, assinatura, ocupado)
 
 # --- Chamada ao Gemini marcada por um botão ---
 # Roda só aqui, no fim, quando todos os controles já foram desenhados desativados.
