@@ -6,7 +6,7 @@ Modelo: gemini-3.5-flash (reserva: gemini-3.5-flash-lite). Prompts: v2-regras (c
 
 **App online:** https://extrato-com-ia-david.streamlit.app/ (dados fictícios; limite de 15 pedidos de IA por dia para todos os visitantes).
 
-> README em construção: blocos 1 a 6 concluídos e app publicado. Faltam o ajuste visual, o teste ao vivo no site, o GIF e o README final (bloco 7).
+> README em construção: blocos 1 a 6 concluídos, app publicado e visual pronto. Faltam o teste ao vivo da categorização no site, o GIF e o README final (bloco 7).
 
 ## Dados
 
