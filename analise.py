@@ -63,17 +63,21 @@ def resumo(df):
 
 
 def gasto_por_categoria(df):
-    """DataFrame (categoria, gasto) só do consumo, do maior para o menor.
+    """DataFrame (categoria, gasto, percentual) só do consumo, do maior para o menor.
 
     Soma com sinal: estornos positivos abatem as compras da mesma categoria.
+    percentual = gasto / consumo total x 100, sem arredondar (0 se o consumo total não
+    for positivo).
     """
     soma = _consumo(df).groupby("categoria")["valor"].sum()
     gasto = (-soma).round(2).rename("gasto").reset_index()
+    total = gasto["gasto"].sum()
+    gasto["percentual"] = gasto["gasto"] / total * 100 if total > 0 else 0.0
     return gasto.sort_values("gasto", ascending=False).reset_index(drop=True)
 
 
 def evolucao_mensal(df):
-    """DataFrame (mes 'AAAA-MM', renda, consumo), um por mês."""
+    """DataFrame (mes 'AAAA-MM', renda, consumo, sobra), um por mês. sobra = renda - consumo."""
     mes = df["data"].dt.strftime("%Y-%m")
     renda = df.loc[df["categoria"] == CATEGORIA_RENDA, "valor"].groupby(mes).sum()
     consumo = -_consumo(df)["valor"].groupby(mes).sum()
@@ -85,6 +89,7 @@ def evolucao_mensal(df):
             "consumo": consumo.reindex(meses, fill_value=0).round(2).values,
         }
     )
+    resultado["sobra"] = (resultado["renda"] - resultado["consumo"]).round(2)
     return resultado
 
 
@@ -300,7 +305,6 @@ def montar_pacote(df):
         .merge(renda_fixa_extra_mensal(df), on="mes")
         .merge(fixo_variavel_mensal(df), on="mes")
     )
-    mensal["sobra"] = (mensal["renda"] - mensal["consumo"]).round(2)
     campos = ["renda", "renda_fixa", "renda_extra", "consumo", "fixo", "variavel", "sobra"]
 
     lista_mensal = [

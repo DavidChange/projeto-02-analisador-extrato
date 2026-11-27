@@ -51,6 +51,18 @@ assert abs(evolucao_mensal(df)["consumo"].sum() - r["consumo"]) < 0.01, "mensal 
 assert abs(evolucao_mensal(df)["renda"].sum() - r["renda"]) < 0.01, "mensal != renda"
 print("\nConferências de coerência: OK")
 
+# Sobra por mês e percentual por categoria
+sobras = evolucao_mensal(df).set_index("mes")["sobra"]
+assert list(sobras.index) == ["2026-08", "2026-09", "2026-10"], sobras
+assert sobras.round(2).tolist() == [3201.14, 2469.88, 1400.46], sobras
+assert abs(sobras.sum() - 7071.48) < 0.01, sobras.sum()
+assert abs(sobras.sum() - r["saldo"]) < 0.01, "soma das sobras != saldo"
+print("Sobras de ago, set e out somam 7.071,48: OK")
+assert abs(gastos["percentual"].sum() - 100) < 0.01, gastos["percentual"].sum()
+maior = gastos.iloc[0]
+assert abs(maior["percentual"] - maior["gasto"] / r["consumo"] * 100) < 0.001, maior
+print("Percentuais por categoria somam 100: OK")
+
 # --- b) Teste mínimo com 3 linhas inventadas ---
 mini = pd.DataFrame(
     {
@@ -91,6 +103,11 @@ except ValueError as e:
     print("Erro esperado:", e)
 
 print("Teste mínimo (compra -100 + estorno +30 = gasto 70): OK")
+
+# Estorno igual à compra: consumo zero não pode dividir por zero
+zerado = mini[mini["id"].isin(["A1", "A2"])].assign(valor=[-50.0, 50.0])
+assert gasto_por_categoria(zerado)["percentual"].tolist() == [0.0]
+print("Consumo zero (percentual 0, sem divisão por zero): OK")
 
 # --- c) Gasto fixo x variável, com as categorias da IA ---
 print("\n=== gastos_fixos ===")

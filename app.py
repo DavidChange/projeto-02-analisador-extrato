@@ -1,9 +1,9 @@
 import hashlib
+import html
 import json
 import os
 import re
 
-import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -29,7 +29,7 @@ from categorizador import (
     pedidos_restantes,
 )
 from extrato import carregar_e_validar
-from particulas import ALTURA_QUADRO, html_particulas
+from particulas import ALTURA_QUADRO, COR_FORA_DA_LISTA, CORES, html_particulas
 from recomendador import (
     VERSAO_PROMPT_RECOMENDACOES,
     gerar_recomendacoes,
@@ -45,8 +45,6 @@ CAMINHO_RECOMENDACOES_EXEMPLO = f"resultados/recomendacoes_{VERSAO_PROMPT_RECOME
 LIMITE_TRANSACOES_UPLOAD = 400  # limite da demonstração, para proteger a cota
 
 MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
-# Eixos no padrão brasileiro: o Altair formata "1,500" e trocamos a vírgula por ponto
-ROTULO_EIXO_BR = "replace(datum.label, regexp(',', 'g'), '.')"
 
 URL_REPOSITORIO = "https://github.com/DavidChange/projeto-02-analisador-extrato"
 
@@ -70,6 +68,35 @@ ESTILO = """
 .cartao-valor { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 600;
     margin-top: 6px; overflow-wrap: anywhere; }
 .cartao-destaque .cartao-valor { color: #ff7a4d; }
+.paineis { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; }
+.painel { display: flex; flex-direction: column; gap: 14px; }
+.painel-topo { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.legenda { display: flex; gap: 12px; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; }
+.bolinha { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.legenda .bolinha { margin-right: 5px; }
+.cor-renda { background: #f6f4f1; }
+.cor-consumo { background: #ff7a4d; }
+.meses { flex: 1; display: flex; gap: 6px; overflow-x: auto; }
+.mes { flex: 1 0 74px; display: flex; flex-direction: column; text-align: center; }
+.barras { position: relative; flex: 1; min-height: 210px; padding-top: 28px; display: flex;
+    justify-content: center; gap: 6px; border-bottom: 1px solid #1d1d21; }
+.coluna { height: 100%; width: 26px; display: flex; align-items: flex-end; outline: none; }
+.barra { width: 100%; border-radius: 5px 5px 0 0; }
+.coluna:hover .barra, .coluna:focus .barra { opacity: 0.8; }
+.dica { position: absolute; top: 0; left: 50%; transform: translateX(-50%); white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; padding: 2px 6px;
+    background: #1d1d21; border-radius: 6px; display: none; pointer-events: none; }
+.coluna:hover .dica, .coluna:focus .dica { display: block; }
+.mes-nome, .mes-sobra { font-family: 'JetBrains Mono', monospace; }
+.mes-nome { font-size: 0.75rem; margin-top: 8px; }
+.mes-sobra { font-size: 0.65rem; opacity: 0.65; margin-top: 2px; }
+.linha { display: grid; grid-template-columns: 8px minmax(0, 1fr) 3.2em 6.6em; align-items: center;
+    gap: 6px; padding: 7px 0; border-bottom: 1px solid #1d1d21; font-size: 0.78rem; }
+.linha:last-child { border-bottom: none; }
+.linha-percentual, .linha-valor { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+    text-align: right; white-space: nowrap; }
+.linha-percentual { opacity: 0.65; }
+@media (max-width: 640px) { .paineis { grid-template-columns: minmax(0, 1fr); } }
 [data-testid="stMetricLabel"] p, [data-testid="stMetricValue"] {
     font-family: 'JetBrains Mono', monospace; }
 </style>
@@ -141,6 +168,64 @@ def mostrar_cartoes(r):
         '<div class="cartao-rotulo">Sobra</div>'
         f'<div class="cartao-valor">{formatar_reais(r["saldo"])}</div></div>'
         "</div>"
+    )
+
+
+def html_mes_a_mes(mensal):
+    """Cartão com duas barras por mês (mensal é o resultado de evolucao_mensal())."""
+    # A maior renda ocupa a altura toda; se um consumo passar dela, ele vira a referência
+    maior = max(mensal["renda"].max(), mensal["consumo"].max())
+    colunas = []
+    for linha in mensal.itertuples():
+        barras = ""
+        for nome, classe, valor in (
+            ("Renda", "cor-renda", linha.renda),
+            ("Consumo", "cor-consumo", linha.consumo),
+        ):
+            altura = max(0.0, valor) / maior * 100 if maior > 0 else 0.0
+            texto = formatar_reais(valor)
+            barras += (
+                f'<div class="coluna" tabindex="0" aria-label="{nome}: {texto}">'
+                f'<span class="dica">{texto}</span>'
+                f'<div class="barra {classe}" style="height: {altura:.2f}%"></div></div>'
+            )
+        sobra = formatar_reais(linha.sobra).replace(" ", "&nbsp;")
+        colunas.append(
+            f'<div class="mes"><div class="barras">{barras}</div>'
+            f'<div class="mes-nome">{rotulo_mes(linha.mes)}</div>'
+            f'<div class="mes-sobra">sobra {sobra}</div></div>'
+        )
+    return (
+        '<div class="cartao painel"><div class="painel-topo">'
+        '<div class="cartao-rotulo">Mês a mês</div>'
+        '<div class="legenda"><span><span class="bolinha cor-renda"></span>renda</span>'
+        '<span><span class="bolinha cor-consumo"></span>consumo</span></div></div>'
+        f'<div class="meses">{"".join(colunas)}</div></div>'
+    )
+
+
+def html_para_onde_foi(gastos):
+    """Cartão com uma linha por categoria (gastos é o resultado de gasto_por_categoria())."""
+    linhas = []
+    for linha in gastos.itertuples():  # já vem do maior gasto para o menor
+        cor = CORES.get(linha.categoria, COR_FORA_DA_LISTA)
+        percentual = f"{linha.percentual:.1f}".replace(".", ",")
+        linhas.append(
+            f'<div class="linha"><span class="bolinha" style="background: {cor}"></span>'
+            f"<span>{html.escape(str(linha.categoria))}</span>"
+            f'<span class="linha-percentual">{percentual}%</span>'
+            f'<span class="linha-valor">{formatar_reais(linha.gasto)}</span></div>'
+        )
+    return (
+        '<div class="cartao painel"><div class="cartao-rotulo">Para onde foi</div>'
+        f'<div>{"".join(linhas)}</div></div>'
+    )
+
+
+def mostrar_paineis(mensal, gastos):
+    """Os cartões "Mês a mês" e "Para onde foi", lado a lado (empilhados em tela estreita)."""
+    st.html(
+        f'<div class="paineis">{html_mes_a_mes(mensal)}{html_para_onde_foi(gastos)}</div>'
     )
 
 
@@ -379,69 +464,7 @@ if guardado is not None:
             height=ALTURA_QUADRO,
         )
 
-        # Gráfico de barras horizontais: maior gasto no topo
-        st.subheader("Gasto por categoria")
-        gastos = gasto_por_categoria(df_cat)
-        gastos["gasto_formatado"] = gastos["gasto"].map(formatar_reais)  # para o tooltip
-        grafico = (
-            alt.Chart(gastos)
-            .mark_bar()
-            .encode(
-                x=alt.X(
-                    "gasto:Q",
-                    title="Gasto (R$)",
-                    axis=alt.Axis(format=",.0f", labelExpr=ROTULO_EIXO_BR),
-                ),
-                y=alt.Y("categoria:N", sort="-x", title=None),
-                tooltip=[
-                    alt.Tooltip("categoria:N", title="Categoria"),
-                    alt.Tooltip("gasto_formatado:N", title="Gasto"),
-                ],
-            )
-        )
-        st.altair_chart(grafico, width="stretch")
-
-        # Evolução mensal: barras agrupadas (renda e consumo lado a lado em cada mês)
-        st.subheader("Evolução mensal")
-        mensal = evolucao_mensal(df_cat)
-        mensal["mes_rotulo"] = mensal["mes"].map(rotulo_mes)
-        longo = mensal.melt(
-            id_vars=["mes", "mes_rotulo"],
-            value_vars=["renda", "consumo"],
-            var_name="tipo",
-            value_name="valor",
-        )
-        longo["tipo"] = longo["tipo"].map({"renda": "Renda", "consumo": "Consumo"})
-        longo["valor_formatado"] = longo["valor"].map(formatar_reais)  # para o tooltip
-        grafico_mensal = (
-            alt.Chart(longo)
-            .mark_bar()
-            .encode(
-                x=alt.X(
-                    "mes_rotulo:N",
-                    title=None,
-                    sort=mensal["mes_rotulo"].tolist(),  # ordem cronológica
-                    axis=alt.Axis(labelAngle=0),
-                ),
-                xOffset=alt.XOffset("tipo:N", sort=["Renda", "Consumo"]),
-                y=alt.Y(
-                    "valor:Q",
-                    title="Valor (R$)",
-                    axis=alt.Axis(format=",.0f", labelExpr=ROTULO_EIXO_BR),
-                ),
-                color=alt.Color(
-                    "tipo:N",
-                    title=None,
-                    scale=alt.Scale(domain=["Renda", "Consumo"], range=["#4C78A8", "#F58518"]),
-                ),
-                tooltip=[
-                    alt.Tooltip("mes_rotulo:N", title="Mês"),
-                    alt.Tooltip("tipo:N", title="Tipo"),
-                    alt.Tooltip("valor_formatado:N", title="Valor"),
-                ],
-            )
-        )
-        st.altair_chart(grafico_mensal, width="stretch")
+        mostrar_paineis(evolucao_mensal(df_cat), gasto_por_categoria(df_cat))
 
         # As 10 maiores despesas de consumo
         st.subheader("Maiores despesas")
