@@ -113,12 +113,19 @@ ESTILO = """
 .rec-diagnostico { font-size: 0.85rem; line-height: 1.5; color: #a5a3a0; }
 .rec-acao { font-size: 0.85rem; line-height: 1.5; margin-top: auto; padding-top: 10px;
     border-top: 1px solid #1d1d21; }
+.cartao.nota { display: flex; gap: 10px; background: rgba(255, 122, 77, 0.08);
+    border-color: rgba(255, 122, 77, 0.35); color: #e9e7e4; font-size: 0.9rem; line-height: 1.55;
+    overflow-wrap: anywhere; }
+.nota-icone { flex: none; color: #ff7a4d; }
+.nota-detalhe { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #8d8a86;
+    margin-top: 6px; }
 .contagem { font-size: 0.875rem; color: #a5a3a0; }
 .filtro-ativo { color: #ff7a4d; }
 .st-key-limpar_filtros button { min-height: 0; padding: 2px 12px; }
 .st-key-limpar_filtros button p { font-size: 0.75rem; }
 .secao { display: flex; align-items: baseline; gap: 12px; margin-top: 28px;
     padding-top: 20px; border-top: 1px solid #1d1d21; }
+.secao.secao-primeira { border-top: none; padding-top: 0; }  /* já há a linha do topo */
 .secao-numero { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #ff7a4d; }
 .secao-titulo { font-size: 1.75rem; font-weight: 700; line-height: 1.2; }
 @media (max-width: 640px) {
@@ -163,8 +170,8 @@ def mostrar_topo(area):
         '<div class="topo">'
         '<div class="topo-nome">Extrato com IA</div>'
         '<div class="topo-etiquetas">'
-        '<span class="etiqueta">dados fictícios</span>'
-        f'<span class="etiqueta">pedidos de IA hoje: {pedidos_restantes()} de '
+        '<span class="etiqueta">Dados fictícios</span>'
+        f'<span class="etiqueta">Pedidos de IA hoje: {pedidos_restantes()} de '
         f"{LIMITE_DIARIO_APP}</span>"
         f'<a class="etiqueta" href="{URL_REPOSITORIO}" target="_blank" '
         'rel="noopener noreferrer">GitHub</a>'
@@ -386,10 +393,23 @@ def subtitulo(texto, rotulo=None):
     )
 
 
+def nota(texto, detalhe=None):
+    """Cartão de nota, para informações que não são erro nem aviso.
+
+    detalhe: linha pequena opcional no fim (ex.: modelo e prompt).
+    """
+    extra = f'<div class="nota-detalhe">{html.escape(str(detalhe))}</div>' if detalhe else ""
+    st.html(
+        '<div class="cartao nota"><span class="nota-icone" aria-hidden="true">ⓘ</span>'
+        f"<div><span>{html.escape(str(texto))}</span>{extra}</div></div>"
+    )
+
+
 def titulo_secao(numero, texto):
     """Título numerado das seções da página (ex.: 01 Envie o extrato)."""
+    classes = "secao secao-primeira" if numero == "01" else "secao"
     st.html(
-        '<div class="secao" role="heading" aria-level="2">'
+        f'<div class="{classes}" role="heading" aria-level="2">'
         f'<span class="secao-numero">{numero}</span>'
         f'<span class="secao-titulo">{texto}</span></div>'
     )
@@ -491,7 +511,7 @@ if arquivo is not None:
 elif st.session_state.get("usar_exemplo"):
     fonte = CAMINHO_EXEMPLO
 else:
-    st.info("Envie um CSV (colunas: id, data, descricao, valor) ou use os dados de exemplo.")
+    nota("Envie um CSV (colunas: id, data, descricao, valor) ou use os dados de exemplo.")
     parar()
 
 df, erros = carregar_e_validar(fonte)
@@ -591,11 +611,10 @@ if guardado is not None:
 
 # Aviso das categorias pré-calculadas
 if guardado is not None and "origem" in guardado:
-    st.info(
-        f"Categorias pré-calculadas pelo Gemini ({guardado['origem']['modelo']}, "
-        f"prompt {guardado['origem']['versao_prompt']}) e carregadas de "
-        f"{CAMINHO_CATEGORIAS_EXEMPLO}, sem nova chamada à API. "
-        "Use o botão Categorizar com IA para categorizar ao vivo."
+    nota(
+        "Estas categorias já foram calculadas pelo Gemini e salvas, sem gastar pedidos. "
+        "Para ver a IA trabalhando ao vivo, clique em Categorizar com IA.",
+        f"{guardado['origem']['modelo']} · prompt {guardado['origem']['versao_prompt']}",
     )
 
 # --- 03: o resultado (só depois da categorização) ---
@@ -630,7 +649,7 @@ if df_cat is not None:
             json.dumps(pacote, ensure_ascii=False, sort_keys=True).encode("utf-8")
         ).hexdigest()
     except ValueError as e:
-        st.info(str(e))
+        nota(e)
 
     # Se o extrato ou o pacote mudou, as recomendações antigas são descartadas
     guardadas = st.session_state.get("recomendacoes")
@@ -702,12 +721,11 @@ if df_cat is not None:
         rec_guardado = guardadas["resultado"]
         if "origem" in guardadas:
             with area_aviso_rec:
-                st.info(
-                    f"Recomendações pré-geradas pelo Gemini ({rec_guardado['modelo']}, "
-                    f"prompt {rec_guardado['versao_prompt']}) e salvas em "
-                    f"{guardadas['origem']['arquivo']}, sem nova chamada à API. "
-                    "Os valores foram preenchidos agora a partir dos números calculados "
-                    "pelo pandas. O botão gera novas recomendações ao vivo."
+                nota(
+                    "Estas recomendações já foram geradas pelo Gemini e salvas. Os valores "
+                    "vêm do pandas. Para gerar novas ao vivo, clique em Gerar recomendações "
+                    "com IA.",
+                    f"{rec_guardado['modelo']} · prompt {rec_guardado['versao_prompt']}",
                 )
         mostrar_recomendacoes(rec_guardado["recomendacoes"])
         st.caption(
@@ -730,7 +748,7 @@ if df_cat is not None:
     subtitulo("Gasto fixo x variável")
     fixo_variavel = fixo_variavel_mensal(df_cat)
     if fixo_variavel.empty:
-        st.info("A separação entre gasto fixo e variável precisa de pelo menos 3 meses de extrato.")
+        nota("A separação entre gasto fixo e variável precisa de pelo menos 3 meses de extrato.")
     else:
         mostrar_fixo_variavel(fixo_variavel)
         with st.expander("Gastos considerados fixos"):

@@ -1,5 +1,8 @@
 """Testes da tela do app (cartões de recomendações e subtítulos). Não chama a API."""
 
+import json
+
+import pandas as pd
 from streamlit.testing.v1 import AppTest
 
 import categorizador
@@ -67,6 +70,43 @@ assert [corpo.count(f'rec-numero">{n}<') for n in ["01", "02", "03"]] == [1, 1, 
 assert not any("negrito" in m.value for m in at.markdown)
 print("OK: recomendação falsa escapada; os $ aparecem normais; 3 cartões numerados")
 print("OK: R$ preso ao número por um espaço que não quebra")
+
+# --- c) Notas no lugar das caixas azuis e etiquetas do topo ---
+assert not at.info, [i.value for i in at.info]
+notas = [c for c in blocos_html(at) if 'class="cartao nota"' in c]
+assert len(notas) == 2, notas
+assert (
+    "<span>Estas categorias já foram calculadas pelo Gemini e salvas, sem gastar pedidos. "
+    "Para ver a IA trabalhando ao vivo, clique em Categorizar com IA.</span>" in notas[0]
+), notas[0]
+assert (
+    "<span>Estas recomendações já foram geradas pelo Gemini e salvas. Os valores vêm do pandas. "
+    "Para gerar novas ao vivo, clique em Gerar recomendações com IA.</span>" in notas[1]
+), notas[1]
+assert all('nota-icone" aria-hidden="true">ⓘ</span>' in c and ">NOTA<" not in c for c in notas)
+# A linha pequena de cada nota vem dos arquivos salvos (modelo e prompt)
+salvas = pd.read_csv("resultados/categorias_v2-regras.csv", dtype=str)
+detalhe_categorias = (
+    f"{', '.join(sorted(set(salvas['modelo'])))} · prompt "
+    f"{', '.join(sorted(set(salvas['versao_prompt'])))}"
+)
+with open("resultados/recomendacoes_r2.json", encoding="utf-8") as arquivo:
+    salvo = json.load(arquivo)
+detalhe_recomendacoes = f"{salvo['modelo']} · prompt {salvo['versao_prompt']}"
+for corpo, detalhe in zip(notas, [detalhe_categorias, detalhe_recomendacoes]):
+    assert corpo.endswith(f'<div class="nota-detalhe">{detalhe}</div></div></div>'), corpo
+titulos = [c for c in blocos_html(at) if 'secao-numero">' in c]
+assert ['secao-primeira' in c for c in titulos] == [True, False, False, False, False]
+topo = next(c for c in blocos_html(at) if 'class="topo"' in c)
+for etiqueta in [">Dados fictícios<", ">Pedidos de IA hoje: 15 de 15<", ">GitHub<"]:
+    assert etiqueta in topo, etiqueta
+inicio = AppTest.from_file("app.py", default_timeout=60).run()
+assert not inicio.info
+assert any('ⓘ</span><div><span>Envie um CSV' in c for c in blocos_html(inicio))
+assert not any('class="nota-detalhe"' in c for c in blocos_html(inicio))
+print("OK: notas no lugar de st.info e etiquetas com inicial maiúscula")
+print(f"OK: detalhes das notas: {detalhe_categorias} | {detalhe_recomendacoes}")
+print("OK: só o título 01 fica sem a linha divisória")
 
 assert categorizador.pedidos_restantes() == categorizador.LIMITE_DIARIO_APP
 print("OK: nenhum pedido ao Gemini")
