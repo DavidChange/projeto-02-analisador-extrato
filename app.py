@@ -68,6 +68,7 @@ ESTILO = """
 .cartao-valor { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 600;
     margin-top: 6px; overflow-wrap: anywhere; }
 .cartao-destaque .cartao-valor { color: #ff7a4d; }
+.cartao-explicacao { font-size: 0.75rem; color: #8d8a86; margin-top: 4px; }
 .paineis { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; }
 .painel { display: flex; flex-direction: column; gap: 14px; }
 .painel-topo { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
@@ -187,10 +188,9 @@ def mostrar_cartoes(r):
         f'<div class="cartao-valor">{formatar_reais(r["renda"])}</div></div>'
         '<div class="cartao"><div class="cartao-rotulo">Consumo</div>'
         f'<div class="cartao-valor">{formatar_reais(r["consumo"])}</div></div>'
-        '<div class="cartao cartao-destaque" '
-        'title="Renda menos consumo, antes de investimentos e transferências">'
-        '<div class="cartao-rotulo">Sobra</div>'
-        f'<div class="cartao-valor">{formatar_reais(r["saldo"])}</div></div>'
+        '<div class="cartao cartao-destaque"><div class="cartao-rotulo">Sobra</div>'
+        f'<div class="cartao-valor">{formatar_reais(r["saldo"])}</div>'
+        '<div class="cartao-explicacao">Renda menos consumo, antes de investir</div></div>'
         "</div>"
     )
 
@@ -318,7 +318,7 @@ def mostrar_extrato(tabela, assinatura, desativado):
             # larguras (px) para as 5 colunas caberem na tela do computador
             "ID": st.column_config.Column(width=60),
             "Data": st.column_config.DateColumn(format="DD/MM/YYYY", width=100),
-            "Descrição": st.column_config.Column(width=275),
+            "Descrição": st.column_config.Column(width=270),
             "Valor": st.column_config.Column(width=100),
             "Categoria": st.column_config.Column(width=160),
         },

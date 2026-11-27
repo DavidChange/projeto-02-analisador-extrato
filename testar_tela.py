@@ -108,5 +108,11 @@ print("OK: notas no lugar de st.info e etiquetas com inicial maiúscula")
 print(f"OK: detalhes das notas: {detalhe_categorias} | {detalhe_recomendacoes}")
 print("OK: só o título 01 fica sem a linha divisória")
 
+cartoes_resumo = next(c for c in blocos_html(at) if 'class="cartoes"><div class="cartao"' in c
+                      and ">Sobra<" in c)
+assert '<div class="cartao-explicacao">Renda menos consumo, antes de investir</div></div></div>' in cartoes_resumo
+assert "title=" not in cartoes_resumo, "a explicação não pode depender do mouse"
+print("OK: explicação da Sobra sempre visível")
+
 assert categorizador.pedidos_restantes() == categorizador.LIMITE_DIARIO_APP
 print("OK: nenhum pedido ao Gemini")
