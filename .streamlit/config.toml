@@ -1,0 +1,10 @@
+# Aparência do app (tema escuro). Mudanças aqui só valem depois de reiniciar o Streamlit.
+[theme]
+base = "dark"
+primaryColor = "#ff7a4d"
+backgroundColor = "#050506"
+secondaryBackgroundColor = "#0b0b0d"
+textColor = "#e9e7e4"
+# Fontes do Google Fonts, no formato "nome:endereço do CSS"
+font = "'Space Grotesk':https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap"
+codeFont = "'JetBrains Mono':https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap"

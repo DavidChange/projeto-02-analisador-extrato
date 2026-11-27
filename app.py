@@ -47,6 +47,33 @@ MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "
 # Eixos no padrão brasileiro: o Altair formata "1,500" e trocamos a vírgula por ponto
 ROTULO_EIXO_BR = "replace(datum.label, regexp(',', 'g'), '.')"
 
+URL_REPOSITORIO = "https://github.com/DavidChange/projeto-02-analisador-extrato"
+
+# Aparência da barra do topo e dos cartões (as cores gerais estão em .streamlit/config.toml)
+ESTILO = """
+<style>
+.topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #1d1d21; }
+.topo-nome { font-size: 1.5rem; font-weight: 700; }
+.topo-etiquetas { display: flex; flex-wrap: wrap; gap: 8px; }
+.etiqueta { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; padding: 4px 12px;
+    background: #0b0b0d; border: 1px solid #1d1d21; border-radius: 999px; }
+.topo a.etiqueta { color: #e9e7e4; text-decoration: none; }
+.topo a.etiqueta:hover { color: #ff7a4d; border-color: #ff7a4d; }
+.cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px; }
+.cartao { background: #0b0b0d; border: 1px solid #1d1d21; border-radius: 14px;
+    padding: 18px 20px; }
+.cartao-rotulo { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+    text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.65; }
+.cartao-valor { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 600;
+    margin-top: 6px; overflow-wrap: anywhere; }
+.cartao-destaque .cartao-valor { color: #ff7a4d; }
+[data-testid="stMetricLabel"] p, [data-testid="stMetricValue"] {
+    font-family: 'JetBrains Mono', monospace; }
+</style>
+"""
+
 
 def rotulo_mes(mes):
     """Ex.: '2026-08' -> 'ago/2026'."""
@@ -82,6 +109,37 @@ def mostrar_restantes(area):
     area.caption(
         f"Pedidos ao Gemini restantes hoje nesta demonstração: "
         f"{pedidos_restantes()} de {LIMITE_DIARIO_APP}."
+    )
+
+
+def mostrar_topo(area):
+    """Barra do topo: nome do app e etiquetas (dados fictícios, saldo do dia e GitHub)."""
+    area.html(
+        '<div class="topo">'
+        '<div class="topo-nome">Extrato com IA</div>'
+        '<div class="topo-etiquetas">'
+        '<span class="etiqueta">dados fictícios</span>'
+        f'<span class="etiqueta">pedidos de IA hoje: {pedidos_restantes()} de '
+        f"{LIMITE_DIARIO_APP}</span>"
+        f'<a class="etiqueta" href="{URL_REPOSITORIO}" target="_blank" '
+        'rel="noopener noreferrer">GitHub</a>'
+        "</div></div>"
+    )
+
+
+def mostrar_cartoes(r):
+    """Cartões de Renda, Consumo e Sobra (r é o resultado de resumo())."""
+    st.html(
+        '<div class="cartoes">'
+        '<div class="cartao"><div class="cartao-rotulo">Renda</div>'
+        f'<div class="cartao-valor">{formatar_reais(r["renda"])}</div></div>'
+        '<div class="cartao"><div class="cartao-rotulo">Consumo</div>'
+        f'<div class="cartao-valor">{formatar_reais(r["consumo"])}</div></div>'
+        '<div class="cartao cartao-destaque" '
+        'title="Renda menos consumo, antes de investimentos e transferências">'
+        '<div class="cartao-rotulo">Sobra</div>'
+        f'<div class="cartao-valor">{formatar_reais(r["saldo"])}</div></div>'
+        "</div>"
     )
 
 
@@ -131,6 +189,7 @@ def categorizar_agora(transacoes, assinatura, area, areas_saldo):
             barra.progress(atual / total, text=f"Lote {atual} de {total}")
             for area_saldo in areas_saldo:
                 mostrar_restantes(area_saldo)
+            mostrar_topo(area_topo)
 
         # Lotes já prontos deste extrato: sobrevivem a uma falha no meio
         guardados = st.session_state.get("lotes_prontos")
@@ -159,8 +218,9 @@ def recomendar_agora(pacote, chave_pacote, assinatura, area):
     }
 
 
-st.title("Analisador de extrato financeiro")
-st.warning("Use apenas dados fictícios.")
+st.html(ESTILO)
+area_topo = st.empty()  # redesenhada durante a categorização, para o saldo acompanhar
+mostrar_topo(area_topo)
 
 # True enquanto há uma chamada ao Gemini marcada: desativa os controles da tela
 ocupado = st.session_state.get("rodando") is not None
@@ -309,14 +369,7 @@ if guardado is not None:
     else:
         r = resumo(df_cat)
 
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Renda", formatar_reais(r["renda"]))
-        m2.metric("Consumo", formatar_reais(r["consumo"]))
-        m3.metric(
-            "Sobra",
-            formatar_reais(r["saldo"]),
-            help="Renda menos consumo, antes de investimentos e transferências",
-        )
+        mostrar_cartoes(r)
 
         # Gráfico de barras horizontais: maior gasto no topo
         st.subheader("Gasto por categoria")
