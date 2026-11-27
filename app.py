@@ -3,6 +3,7 @@ import html
 import json
 import os
 import re
+import unicodedata
 
 import pandas as pd
 import streamlit as st
@@ -96,6 +97,18 @@ ESTILO = """
 .linha-percentual, .linha-valor { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
     text-align: right; white-space: nowrap; }
 .linha-percentual { opacity: 0.65; }
+.divisao { display: flex; height: 10px; margin: 14px 0 12px; border-radius: 999px;
+    overflow: hidden; background: #1d1d21; }
+.cor-fixo { background: #8f6c60; }
+.cor-variavel { background: #ff7a4d; }
+.parcela { display: flex; align-items: center; gap: 7px; margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+.rotulo-secao { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+    letter-spacing: 0.08em; opacity: 0.65; padding-bottom: 6px; }
+.contagem { font-size: 0.875rem; color: #a5a3a0; }
+.filtro-ativo { color: #ff7a4d; }
+.st-key-limpar_filtros button { min-height: 0; padding: 2px 12px; }
+.st-key-limpar_filtros button p { font-size: 0.75rem; }
 @media (max-width: 640px) { .paineis { grid-template-columns: minmax(0, 1fr); } }
 [data-testid="stMetricLabel"] p, [data-testid="stMetricValue"] {
     font-family: 'JetBrains Mono', monospace; }
@@ -227,6 +240,122 @@ def mostrar_paineis(mensal, gastos):
     st.html(
         f'<div class="paineis">{html_mes_a_mes(mensal)}{html_para_onde_foi(gastos)}</div>'
     )
+
+
+def sem_acentos(texto):
+    """Ex.: 'Farmácia' -> 'farmacia', para buscar sem diferenciar maiúsculas e acentos."""
+    separado = unicodedata.normalize("NFKD", str(texto))
+    return "".join(c for c in separado if not unicodedata.combining(c)).casefold()
+
+
+def limpar_filtros(chave):
+    """on_click de "Limpar filtros": volta os três filtros ao padrão."""
+    st.session_state[f"busca_{chave}"] = ""
+    st.session_state[f"mes_{chave}"] = "Todos"
+    if f"categoria_{chave}" in st.session_state:
+        st.session_state[f"categoria_{chave}"] = "Todas"
+
+
+def mostrar_extrato(tabela, assinatura, desativado):
+    """Filtros e tabela do extrato. Só muda o que aparece: os cálculos usam o extrato inteiro."""
+    tem_categorias = "categoria" in tabela.columns
+    with st.container(horizontal=True, vertical_alignment="bottom"):
+        st.subheader("Extrato", width="content")
+        st.html('<div class="rotulo-secao">FILTRAR TRANSAÇÕES</div>', width="content")
+    areas = st.columns(3 if tem_categorias else 2)
+    # A assinatura nas chaves faz os filtros voltarem ao início quando o extrato muda
+    chave = assinatura[:12]
+
+    busca = areas[0].text_input(
+        "Buscar",
+        key=f"busca_{chave}",
+        placeholder="Ex.: uber, mercado, aluguel",
+        disabled=desativado,
+    )
+    meses = tabela["data"].dt.strftime("%Y-%m")
+    mes = areas[1].selectbox(
+        "Mês",
+        ["Todos"] + sorted(meses.unique()),
+        format_func=lambda m: m if m == "Todos" else rotulo_mes(m),
+        key=f"mes_{chave}",
+        disabled=desativado,
+    )
+    categoria = "Todas"
+    if tem_categorias:
+        presentes = sorted(tabela["categoria"].dropna().unique(), key=sem_acentos)
+        categoria = areas[2].selectbox(
+            "Categoria", ["Todas"] + presentes, key=f"categoria_{chave}", disabled=desativado
+        )
+
+    visiveis = pd.Series(True, index=tabela.index)
+    if busca.strip():
+        descricoes = tabela["descricao"].map(sem_acentos)
+        visiveis &= descricoes.str.contains(sem_acentos(busca.strip()), regex=False)
+    if mes != "Todos":
+        visiveis &= meses == mes
+    if categoria != "Todas":
+        visiveis &= tabela["categoria"] == categoria
+    filtrada = tabela[visiveis]
+
+    colunas = {"id": "ID", "data": "Data", "descricao": "Descrição", "valor": "Valor"}
+    if tem_categorias:
+        colunas["categoria"] = "Categoria"
+    tela = filtrada[list(colunas)].rename(columns=colunas)
+    st.space("small")  # a barra de ícones da tabela aparece aqui, sem cobrir os filtros
+    # Data e valor continuam sendo data e número (a ordenação funciona); só muda a exibição
+    st.dataframe(
+        tela.style.format({"Valor": formatar_reais}),
+        column_config={
+            # larguras (px) para as 5 colunas caberem na tela do computador
+            "ID": st.column_config.Column(width=60),
+            "Data": st.column_config.DateColumn(format="DD/MM/YYYY", width=100),
+            "Descrição": st.column_config.Column(width=275),
+            "Valor": st.column_config.Column(width=100),
+            "Categoria": st.column_config.Column(width=160),
+        },
+        hide_index=True,
+        width="stretch",
+    )
+    contagem = f"Mostrando {len(filtrada)} de {len(tabela)} transações"
+    ativo = bool(busca.strip()) or mes != "Todos" or categoria != "Todas"
+    with st.container(horizontal=True, vertical_alignment="center"):
+        if ativo:
+            st.html(
+                f'<div class="contagem">{contagem} · '
+                '<span class="filtro-ativo">filtro ativo</span></div>',
+                width="content",
+            )
+            st.button(
+                "Limpar filtros",
+                key="limpar_filtros",
+                on_click=limpar_filtros,
+                args=(chave,),
+                disabled=desativado,
+            )
+        else:
+            st.html(f'<div class="contagem">{contagem}.</div>', width="content")
+
+
+def mostrar_fixo_variavel(fixo_variavel):
+    """Um cartão por mês (fixo_variavel é o resultado de fixo_variavel_mensal())."""
+    cartoes = []
+    for linha in fixo_variavel.itertuples():
+        fixo, variavel = formatar_reais(linha.fixo), formatar_reais(linha.variavel)
+        # Larguras da barra: proporção entre os dois (um valor negativo não ocupa espaço)
+        parte_fixa, parte_variavel = max(0.0, linha.fixo), max(0.0, linha.variavel)
+        soma = parte_fixa + parte_variavel
+        largura_fixa = parte_fixa / soma * 100 if soma > 0 else 0.0
+        largura_variavel = parte_variavel / soma * 100 if soma > 0 else 0.0
+        cartoes.append(
+            f'<div class="cartao"><div class="cartao-rotulo">{rotulo_mes(linha.mes)}</div>'
+            f'<div class="divisao" role="img" aria-label="Fixo {fixo}, variável {variavel}">'
+            f'<div class="cor-fixo" style="width: {largura_fixa:.2f}%"></div>'
+            f'<div class="cor-variavel" style="width: {largura_variavel:.2f}%"></div></div>'
+            f'<div class="parcela"><span class="bolinha cor-fixo"></span>Fixo {fixo}</div>'
+            f'<div class="parcela"><span class="bolinha cor-variavel"></span>'
+            f"Variável {variavel}</div></div>"
+        )
+    st.html(f'<div class="cartoes">{"".join(cartoes)}</div>')
 
 
 def marcar_execucao(acao):
@@ -432,7 +561,7 @@ with area_tabela:
             f"{CAMINHO_CATEGORIAS_EXEMPLO}, sem nova chamada à API. "
             "Use o botão Categorizar com IA para categorizar ao vivo."
         )
-    st.dataframe(tabela, width="stretch")
+    mostrar_extrato(tabela, assinatura, ocupado)
 
 # Contagem de transações por categoria
 if guardado is not None:
@@ -498,12 +627,7 @@ if guardado is not None:
         if fixo_variavel.empty:
             st.info("A separação entre gasto fixo e variável precisa de pelo menos 3 meses de extrato.")
         else:
-            fv_tela = {
-                "Mês": fixo_variavel["mes"].map(rotulo_mes),
-                "Fixo": fixo_variavel["fixo"].map(formatar_reais),
-                "Variável": fixo_variavel["variavel"].map(formatar_reais),
-            }
-            st.dataframe(fv_tela, hide_index=True, width="stretch")
+            mostrar_fixo_variavel(fixo_variavel)
             with st.expander("Gastos considerados fixos"):
                 fixos = gastos_fixos(df_cat)
                 fixos_tela = {
